@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextstep-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"  # Bind to localhost only for Tailscale Funnel
+    environment:
+      - DATABASE_URL=postgresql://nextstep:${DB_PASSWORD:-nextstep}@db:5432/nextstep?schema=public
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - TZ=Australia/Perth
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nextstep-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:16-alpine
+    container_name: nextstep-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=nextstep
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-nextstep}
+      - POSTGRES_DB=nextstep
+      - TZ=Australia/Perth
+      - PGTZ=Australia/Perth
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nextstep-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextstep -d nextstep"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Do not expose PostgreSQL to the host - only accessible within the network
+    # If you need direct access, uncomment below:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+
+volumes:
+  postgres_data:
+    name: nextstep-postgres-data
+
+networks:
+  nextstep-network:
+    name: nextstep-network
+    driver: bridge

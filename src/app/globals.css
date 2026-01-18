@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 251 252;
+    --foreground: 31 38 49;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-secondary-900 antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Large text mode */
+  .large-text body,
+  .large-text {
+    @apply text-lg;
+  }
+
+  .large-text h1 {
+    @apply text-3xl;
+  }
+
+  .large-text h2 {
+    @apply text-2xl;
+  }
+
+  .large-text h3 {
+    @apply text-xl;
+  }
+
+  .large-text .text-sm {
+    @apply text-base;
+  }
+
+  .large-text .text-xs {
+    @apply text-sm;
+  }
+
+  /* iOS safe areas */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Focus styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Better touch targets */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    @apply touch-manipulation;
+  }
+
+  /* Smooth scrolling */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+@layer components {
+  /* Primary taken button */
+  .btn-taken {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-semibold;
+    @apply py-3 px-6 rounded-button min-h-touch;
+    @apply shadow-button transition-all duration-200;
+    @apply active:scale-95;
+  }
+
+  /* Card styles */
+  .card-appointment {
+    @apply bg-surface rounded-card shadow-card p-4;
+    @apply border-l-4 border-primary-500;
+  }
+
+  .card-medication {
+    @apply bg-surface rounded-card shadow-card p-4;
+    @apply flex items-center justify-between;
+  }
+
+  /* Overdue styles */
+  .overdue {
+    @apply border-l-4 border-red-500 bg-red-50;
+  }
+
+  /* Timeline styles */
+  .timeline-item {
+    @apply relative pl-6 pb-4;
+  }
+
+  .timeline-item::before {
+    content: '';
+    @apply absolute left-0 top-2 w-2 h-2 rounded-full bg-primary-400;
+  }
+
+  .timeline-item::after {
+    content: '';
+    @apply absolute left-[3px] top-4 w-0.5 h-full bg-border;
+  }
+
+  .timeline-item:last-child::after {
+    @apply hidden;
+  }
+}
+
+@layer utilities {
+  /* Animation utilities */
+  .animate-in {
+    animation: animateIn 0.2s ease-out;
+  }
+
+  .animate-out {
+    animation: animateOut 0.15s ease-in forwards;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes animateOut {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .slide-in-from-bottom-4 {
+    animation: slideInFromBottom 0.2s ease-out;
+  }
+
+  .slide-out-to-bottom-4 {
+    animation: slideOutToBottom 0.15s ease-in forwards;
+  }
+
+  @keyframes slideInFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideOutToBottom {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .zoom-in-95 {
+    animation: zoomIn 0.2s ease-out;
+  }
+
+  @keyframes zoomIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

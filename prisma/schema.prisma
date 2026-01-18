@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  sessions           Session[]
+  workspaceMembers   WorkspaceMember[]
+  createdAppointments Appointment[] @relation("AppointmentCreatedBy")
+  updatedAppointments Appointment[] @relation("AppointmentUpdatedBy")
+  createdMedications  Medication[]  @relation("MedicationCreatedBy")
+  updatedMedications  Medication[]  @relation("MedicationUpdatedBy")
+  createdNotes        Note[]        @relation("NoteCreatedBy")
+  updatedNotes        Note[]        @relation("NoteUpdatedBy")
+  loggedDoses         DoseLog[]     @relation("DoseLoggedBy")
+  undoneDoses         DoseLog[]     @relation("DoseUndoneBy")
+  auditLogs           AuditLog[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ipAddress String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ipAddress String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+// ============================================
+// WORKSPACE & SHARING
+// ============================================
+
+model Workspace {
+  id             String   @id @default(cuid())
+  name           String   // e.g., "Grace's Plan"
+  clinicPhone    String?
+  emergencyPhone String?
+  quietHoursStart String? // HH:mm format
+  quietHoursEnd   String? // HH:mm format
+  largeTextMode  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  members      WorkspaceMember[]
+  inviteTokens InviteToken[]
+  appointments Appointment[]
+  medications  Medication[]
+  notes        Note[]
+  doseLogs     DoseLog[]
+  auditLogs    AuditLog[]
+  syncCursors  SyncCursor[]
+
+  @@index([name])
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(VIEWER)
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model InviteToken {
+  id          String        @id @default(cuid())
+  workspaceId String
+  token       String        @unique
+  role        WorkspaceRole @default(VIEWER)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([workspaceId])
+}
+
+// ============================================
+// APPOINTMENTS
+// ============================================
+
+model Appointment {
+  id          String    @id @default(cuid())
+  workspaceId String
+  title       String
+  datetime    DateTime
+  location    String?
+  mapUrl      String?
+  notes       String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+  updatedById String
+
+  // Sync tracking
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("AppointmentUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId, datetime])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// MEDICATIONS
+// ============================================
+
+enum ScheduleType {
+  FIXED_TIMES    // e.g., 08:00, 20:00 daily
+  INTERVAL       // every X hours
+  WEEKDAYS       // specific weekdays at a time
+  PRN            // as needed with min hours between
+}
+
+model Medication {
+  id           String       @id @default(cuid())
+  workspaceId  String
+  name         String
+  instructions String?
+  scheduleType ScheduleType
+  scheduleData Json         // Flexible storage for schedule details
+  startDate    DateTime?
+  endDate      DateTime?
+  active       Boolean      @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  createdById  String
+  updatedById  String
+
+  // Sync tracking
+  version      Int          @default(1)
+  syncedAt     DateTime     @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("MedicationCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("MedicationUpdatedBy", fields: [updatedById], references: [id])
+  doseLogs  DoseLog[]
+
+  @@index([workspaceId, active])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// Schedule data shapes (stored as JSON):
+// FIXED_TIMES: { times: ["08:00", "20:00"] }
+// INTERVAL: { hours: 8, startTime: "08:00" }
+// WEEKDAYS: { days: [1, 3, 5], time: "09:00" } // Monday, Wednesday, Friday
+// PRN: { minHoursBetween: 4 }
+
+model DoseLog {
+  id           String    @id @default(cuid())
+  medicationId String
+  workspaceId  String
+  takenAt      DateTime
+  loggedById   String
+  undoneAt     DateTime?
+  undoneById   String?
+  createdAt    DateTime  @default(now())
+
+  // Sync tracking (append-only, never overwritten)
+  syncedAt     DateTime  @default(now())
+
+  // Relations
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  loggedBy   User       @relation("DoseLoggedBy", fields: [loggedById], references: [id])
+  undoneBy   User?      @relation("DoseUndoneBy", fields: [undoneById], references: [id])
+
+  @@index([medicationId, takenAt])
+  @@index([workspaceId, takenAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// NOTES
+// ============================================
+
+enum NoteType {
+  QUESTION  // Questions for doctor
+  GENERAL   // General notes
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  workspaceId String
+  type        NoteType
+  content     String
+  askedAt     DateTime? // When a question was asked (marked)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+  updatedById String
+
+  // Sync tracking
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("NoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("NoteUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId, type])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  action      String   // CREATE, UPDATE, DELETE, TAKE_DOSE, UNDO_DOSE, etc.
+  entityType  String   // APPOINTMENT, MEDICATION, NOTE, DOSE_LOG
+  entityId    String
+  details     Json?    // Additional context
+  createdAt   DateTime @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([workspaceId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ============================================
+// SYNC
+// ============================================
+
+model SyncCursor {
+  id          String   @id @default(cuid())
+  workspaceId String
+  cursor      BigInt   @default(0) // Timestamp-based cursor
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId])
+}
