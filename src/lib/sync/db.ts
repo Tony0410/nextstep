@@ -41,6 +41,7 @@ export interface LocalNote {
   deletedAt: string | null
   version: number
   syncedAt: string
+  createdAt: string
   createdBy?: { id: string; name: string }
   updatedBy?: { id: string; name: string }
 }

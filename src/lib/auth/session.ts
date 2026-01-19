@@ -93,11 +93,14 @@ export function getSessionCookieConfig(token: string) {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_MAX_AGE_DAYS)
 
+  // Allow disabling secure cookies for internal/Tailscale networks
+  const requireHttps = process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production'
+
   return {
     name: SESSION_COOKIE_NAME,
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: requireHttps,
     sameSite: 'lax' as const,
     expires: expiresAt,
     path: '/',
@@ -105,11 +108,13 @@ export function getSessionCookieConfig(token: string) {
 }
 
 export function getSessionCookieClearConfig() {
+  const requireHttps = process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production'
+
   return {
     name: SESSION_COOKIE_NAME,
     value: '',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: requireHttps,
     sameSite: 'lax' as const,
     expires: new Date(0),
     path: '/',

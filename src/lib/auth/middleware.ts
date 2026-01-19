@@ -6,15 +6,9 @@ export interface AuthenticatedRequest extends NextRequest {
   session: SessionData
 }
 
-type RouteHandler = (
-  req: NextRequest,
-  context: { params: Promise<Record<string, string>> }
-) => Promise<NextResponse>
+type RouteHandler = (req: NextRequest, context: { params: Promise<Record<string, string>> }) => Promise<NextResponse>
 
-type AuthenticatedRouteHandler = (
-  req: AuthenticatedRequest,
-  context: { params: Promise<Record<string, string>> }
-) => Promise<NextResponse>
+type AuthenticatedRouteHandler = (req: AuthenticatedRequest, context: { params: Promise<Record<string, string>> }) => Promise<NextResponse>
 
 export function withAuth(handler: AuthenticatedRouteHandler): RouteHandler {
   return async (req: NextRequest, context) => {

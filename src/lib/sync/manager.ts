@@ -364,6 +364,7 @@ export async function createLocalNote(
   data: { type: 'QUESTION' | 'GENERAL'; content: string }
 ): Promise<LocalNote> {
   const id = generateTempId()
+  const now = new Date().toISOString()
   const note: LocalNote = {
     id,
     workspaceId,
@@ -372,7 +373,8 @@ export async function createLocalNote(
     askedAt: null,
     deletedAt: null,
     version: 1,
-    syncedAt: new Date().toISOString(),
+    syncedAt: now,
+    createdAt: now,
   }
 
   await db.notes.add(note)

@@ -173,29 +173,33 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
             }
 
             if (op.entityType === 'APPOINTMENT' && op.data) {
+              const updateData: Record<string, unknown> = {
+                updatedById: req.session.user.id,
+                version: { increment: 1 },
+                syncedAt: new Date(),
+              }
+              if (op.data.title) updateData.title = op.data.title as string
+              if (op.data.datetime) updateData.datetime = new Date(op.data.datetime as string)
+              if (op.data.location !== undefined) updateData.location = op.data.location as string | null
+              if (op.data.mapUrl !== undefined) updateData.mapUrl = op.data.mapUrl as string | null
+              if (op.data.notes !== undefined) updateData.notes = op.data.notes as string | null
+
               await prisma.appointment.update({
                 where: { id: op.entityId },
-                data: {
-                  ...(op.data.title && { title: op.data.title as string }),
-                  ...(op.data.datetime && { datetime: new Date(op.data.datetime as string) }),
-                  ...(op.data.location !== undefined && { location: op.data.location as string | null }),
-                  ...(op.data.mapUrl !== undefined && { mapUrl: op.data.mapUrl as string | null }),
-                  ...(op.data.notes !== undefined && { notes: op.data.notes as string | null }),
-                  updatedById: req.session.user.id,
-                  version: { increment: 1 },
-                  syncedAt: new Date(),
-                },
+                data: updateData,
               })
               results.push({ opId: op.id, success: true, entityId: op.entityId })
             } else if (op.entityType === 'NOTE' && op.data) {
+              const updateData: Record<string, unknown> = {
+                updatedById: req.session.user.id,
+                version: { increment: 1 },
+                syncedAt: new Date(),
+              }
+              if (op.data.content) updateData.content = op.data.content as string
+
               await prisma.note.update({
                 where: { id: op.entityId },
-                data: {
-                  ...(op.data.content && { content: op.data.content as string }),
-                  updatedById: req.session.user.id,
-                  version: { increment: 1 },
-                  syncedAt: new Date(),
-                },
+                data: updateData,
               })
               results.push({ opId: op.id, success: true, entityId: op.entityId })
             } else {

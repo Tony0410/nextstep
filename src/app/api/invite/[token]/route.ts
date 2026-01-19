@@ -171,5 +171,5 @@ async function postHandler(
   }
 }
 
-export const GET = withRateLimit(getHandler)
-export const POST = withRateLimit(postHandler)
+export const GET = getHandler
+export const POST = postHandler

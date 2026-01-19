@@ -87,9 +87,10 @@ export function checkApiRateLimit(identifier: string): { allowed: boolean; remai
 // Clean up old entries periodically
 setInterval(() => {
   const now = Date.now()
-  for (const [key, value] of requestCounts.entries()) {
+  const entries = Array.from(requestCounts.entries())
+  entries.forEach(([key, value]) => {
     if (value.resetAt < now) {
       requestCounts.delete(key)
     }
-  }
+  })
 }, 60000)

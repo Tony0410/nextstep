@@ -52,7 +52,7 @@ export default function MedsPage() {
         .filter((m) => m.active)
         .map((m) => ({
           ...m,
-          scheduleData: m.scheduleData as Medication['scheduleData'],
+          scheduleData: m.scheduleData as unknown as Medication['scheduleData'],
           startDate: m.startDate ? new Date(m.startDate) : null,
           endDate: m.endDate ? new Date(m.endDate) : null,
         })) as Medication[]

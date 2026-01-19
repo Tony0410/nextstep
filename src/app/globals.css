@@ -36,11 +36,13 @@
   }
 
   .large-text .text-sm {
-    @apply text-base;
+    font-size: 1rem; /* text-base equivalent */
+    line-height: 1.5rem;
   }
 
   .large-text .text-xs {
-    @apply text-sm;
+    font-size: 0.875rem; /* text-sm equivalent */
+    line-height: 1.25rem;
   }
 
   /* iOS safe areas */

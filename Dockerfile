@@ -1,6 +1,6 @@
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat python3 make g++
+FROM node:20-slim AS deps
+RUN apt-get update && apt-get install -y openssl build-essential python3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -9,7 +9,8 @@ COPY prisma ./prisma/
 RUN npm ci
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,8 +25,8 @@ ENV NODE_ENV=production
 
 RUN npm run build
 
-# Stage 3: Runner
-FROM node:20-alpine AS runner
+# Stage 3: Runner (using slim Debian for better OpenSSL compatibility)
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -35,11 +36,14 @@ ENV TZ=Australia/Perth
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Install tzdata for timezone support
-RUN apk add --no-cache tzdata
+# Install OpenSSL and CA certificates for Prisma
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/argon2 ./node_modules/argon2
+COPY --from=builder /app/node_modules/node-gyp-build ./node_modules/node-gyp-build
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
@@ -56,5 +60,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Run database migrations before starting
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Start the app (run migrations separately with: docker exec nextstep-app npx prisma migrate deploy)
+CMD ["node", "server.js"]

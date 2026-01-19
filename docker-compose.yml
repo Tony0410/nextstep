@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -8,11 +6,11 @@ services:
     container_name: nextstep-app
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"  # Bind to localhost only for Tailscale Funnel
+      - "4678:3000"  # Bind to all interfaces for Tailscale access
     environment:
       - DATABASE_URL=postgresql://nextstep:${DB_PASSWORD:-nextstep}@db:5432/nextstep?schema=public
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_APP_URL=https://debianvm.kangaroo-eel.ts.net:10000
       - TZ=Australia/Perth
       - NODE_ENV=production
     depends_on:
@@ -48,7 +46,7 @@ services:
       retries: 5
       start_period: 10s
     # Do not expose PostgreSQL to the host - only accessible within the network
-    # If you need direct access, uncomment below:
+    # If you need direct access for migrations, uncomment below:
     # ports:
     #   - "127.0.0.1:5432:5432"
 
