@@ -56,11 +56,17 @@ export async function GET(
       membership.workspace.name
     )
 
+    // Sanitize filename for HTTP headers (remove non-ASCII characters)
+    const safeFilename = membership.workspace.name
+      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII
+      .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid filename chars
+      .trim() || 'appointments'
+
     return new NextResponse(icalContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${membership.workspace.name}-appointments.ics"`,
+        'Content-Disposition': `attachment; filename="${safeFilename}-appointments.ics"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     })
