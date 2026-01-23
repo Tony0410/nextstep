@@ -12,6 +12,12 @@ import {
   Shield,
   ExternalLink,
   Copy,
+  AlertTriangle,
+  Activity,
+  Printer,
+  Calendar,
+  FileText,
+  Bell,
 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
@@ -33,6 +39,7 @@ export default function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteUrl, setInviteUrl] = useState('')
   const [inviteRole, setInviteRole] = useState<'EDITOR' | 'VIEWER'>('VIEWER')
+  const [showCalendarUrl, setShowCalendarUrl] = useState(false)
 
   // Get workspace from IndexedDB for large text mode
   const workspace = useLiveQuery(
@@ -153,6 +160,29 @@ export default function SettingsPage() {
     }
   }
 
+  const handleExportPDF = async () => {
+    try {
+      showToast('Generating PDF...', 'info')
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/export/summary.pdf`)
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `medical-summary-${new Date().toISOString().split('T')[0]}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      showToast('PDF downloaded', 'success')
+    } catch {
+      showToast('PDF export failed', 'error')
+    }
+  }
+
   return (
     <>
       <Header title="Settings" />
@@ -204,6 +234,50 @@ export default function SettingsPage() {
                 <ChevronRight className="w-5 h-5 text-secondary-300" />
               </button>
             </div>
+          </Card>
+        </section>
+
+        {/* Emergency Info */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Emergency Information
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/settings/emergency')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Medical Emergency Info</p>
+                <p className="text-sm text-secondary-500">
+                  Blood type, allergies, conditions
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+          </Card>
+        </section>
+
+        {/* Activity Feed */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            History
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/activity')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Activity className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Activity Log</p>
+                <p className="text-sm text-secondary-500">
+                  View all changes and actions
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
           </Card>
         </section>
 
@@ -261,21 +335,90 @@ export default function SettingsPage() {
           </Card>
         </section>
 
+        {/* Notifications */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Notifications
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/settings/notifications')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Bell className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Medication Reminders</p>
+                <p className="text-sm text-secondary-500">Push notifications & quiet hours</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+          </Card>
+        </section>
+
+        {/* Print */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">Print</h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/print')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Printer className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Print Documents</p>
+                <p className="text-sm text-secondary-500">Medication schedules, appointments</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+          </Card>
+        </section>
+
+        {/* Calendar Sync */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">Calendar</h2>
+          <Card padding="none">
+            <button
+              onClick={() => setShowCalendarUrl(true)}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Calendar className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Subscribe to Calendar</p>
+                <p className="text-sm text-secondary-500">Sync appointments to iPhone, Google</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+          </Card>
+        </section>
+
         {/* Data */}
         <section>
           <h2 className="text-sm font-semibold text-secondary-600 mb-3">Data</h2>
           <Card padding="none">
             <button
-              onClick={handleExportJSON}
+              onClick={handleExportPDF}
               className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
             >
-              <Download className="w-5 h-5 text-secondary-500" />
+              <FileText className="w-5 h-5 text-secondary-500" />
               <div className="flex-1 text-left">
-                <p className="font-medium text-secondary-900">Export Data</p>
-                <p className="text-sm text-secondary-500">Download as JSON</p>
+                <p className="font-medium text-secondary-900">Medical Summary PDF</p>
+                <p className="text-sm text-secondary-500">For doctor appointments</p>
               </div>
               <ChevronRight className="w-5 h-5 text-secondary-300" />
             </button>
+            <div className="border-t border-border">
+              <button
+                onClick={handleExportJSON}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+              >
+                <Download className="w-5 h-5 text-secondary-500" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-secondary-900">Export Data</p>
+                  <p className="text-sm text-secondary-500">Download as JSON</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary-300" />
+              </button>
+            </div>
           </Card>
         </section>
 
@@ -411,6 +554,54 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* Calendar URL modal */}
+      <Modal
+        isOpen={showCalendarUrl}
+        onClose={() => setShowCalendarUrl(false)}
+        title="Subscribe to Calendar"
+      >
+        <div className="space-y-4">
+          <p className="text-secondary-600">
+            Add your appointments to your phone's calendar app. This creates a subscription
+            that stays up to date automatically.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
+                Calendar URL
+              </label>
+              <div className="bg-muted p-3 rounded-button break-all text-sm text-secondary-700 font-mono">
+                {typeof window !== 'undefined' &&
+                  `${window.location.origin}/api/workspaces/${currentWorkspace.id}/calendar.ics?token=${user.id}`}
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                const url = `${window.location.origin}/api/workspaces/${currentWorkspace.id}/calendar.ics?token=${user.id}`
+                navigator.clipboard.writeText(url)
+                showToast('URL copied!', 'success')
+              }}
+              fullWidth
+              variant="secondary"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy URL
+            </Button>
+          </div>
+
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-sm text-blue-800 font-medium mb-2">How to subscribe:</p>
+            <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+              <li><strong>iPhone:</strong> Settings → Calendar → Accounts → Add → Other → Add Subscribed Calendar</li>
+              <li><strong>Google Calendar:</strong> Settings → Add calendar → From URL</li>
+              <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
+            </ul>
+          </div>
+        </div>
       </Modal>
     </>
   )

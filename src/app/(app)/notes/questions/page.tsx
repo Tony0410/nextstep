@@ -6,7 +6,7 @@ import { toZonedTime } from 'date-fns-tz'
 import { HelpCircle, CheckCircle, Copy } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
-import { db, markQuestionAsked } from '@/lib/sync'
+import { db, markQuestionAsked, unmarkQuestionAsked } from '@/lib/sync'
 import { Card, Button, LoadingState, EmptyState, showToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
 import { useApp } from '../../provider'
@@ -39,6 +39,22 @@ export default function QuestionsPage() {
         await markQuestionAsked(note)
         await refreshData()
         showToast('Marked as asked', 'success')
+      } catch {
+        showToast('Failed to update', 'error')
+      }
+    },
+    [questions, refreshData]
+  )
+
+  const handleUnmarkAsked = useCallback(
+    async (noteId: string) => {
+      const note = questions?.find((n) => n.id === noteId)
+      if (!note) return
+
+      try {
+        await unmarkQuestionAsked(note)
+        await refreshData()
+        showToast('Moved back to "To Ask"', 'success')
       } catch {
         showToast('Failed to update', 'error')
       }
@@ -129,7 +145,7 @@ export default function QuestionsPage() {
                 </h2>
                 <div className="space-y-2">
                   {answered.map((note) => (
-                    <Card key={note.id} className="opacity-60">
+                    <Card key={note.id} className="opacity-75">
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                           <CheckCircle className="w-5 h-5 text-green-600" />
@@ -144,6 +160,13 @@ export default function QuestionsPage() {
                             )}
                           </p>
                         </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleUnmarkAsked(note.id)}
+                        >
+                          Undo
+                        </Button>
                       </div>
                     </Card>
                   ))}

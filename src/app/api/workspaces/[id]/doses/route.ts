@@ -113,6 +113,20 @@ export const POST = withAuth(async (req: AuthenticatedRequest, { params }) => {
       },
     })
 
+    // Decrement pill count if tracking is enabled
+    if (medication.pillCount !== null && medication.pillsPerDose !== null) {
+      const newCount = Math.max(0, medication.pillCount - (medication.pillsPerDose || 1))
+      await prisma.medication.update({
+        where: { id: medication.id },
+        data: {
+          pillCount: newCount,
+          version: { increment: 1 },
+          syncedAt: new Date(),
+          updatedById: req.session.user.id,
+        },
+      })
+    }
+
     // Audit log
     await prisma.auditLog.create({
       data: {
@@ -165,7 +179,7 @@ export const PATCH = withAuth(async (req: AuthenticatedRequest, { params }) => {
         undoneAt: null,
       },
       include: {
-        medication: { select: { name: true } },
+        medication: { select: { id: true, name: true, pillCount: true, pillsPerDose: true } },
       },
     })
 
@@ -197,6 +211,20 @@ export const PATCH = withAuth(async (req: AuthenticatedRequest, { params }) => {
         undoneBy: { select: { id: true, name: true } },
       },
     })
+
+    // Restore pill count if tracking is enabled
+    if (doseLog.medication.pillCount !== null && doseLog.medication.pillsPerDose !== null) {
+      const newCount = doseLog.medication.pillCount + (doseLog.medication.pillsPerDose || 1)
+      await prisma.medication.update({
+        where: { id: doseLog.medication.id },
+        data: {
+          pillCount: newCount,
+          version: { increment: 1 },
+          syncedAt: new Date(),
+          updatedById: req.session.user.id,
+        },
+      })
+    }
 
     // Audit log
     await prisma.auditLog.create({

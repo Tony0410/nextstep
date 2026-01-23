@@ -31,6 +31,8 @@ model User {
   loggedDoses         DoseLog[]     @relation("DoseLoggedBy")
   undoneDoses         DoseLog[]     @relation("DoseUndoneBy")
   auditLogs           AuditLog[]
+  symptoms            Symptom[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([email])
 }
@@ -78,15 +80,27 @@ model Workspace {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // Emergency info fields
+  patientName        String?
+  patientDOB         DateTime?
+  bloodType          String?
+  allergies          String?   // Comma-separated or free text
+  medicalConditions  String?   // Comma-separated or free text
+  primaryPhysician   String?
+  physicianPhone     String?
+
   // Relations
-  members      WorkspaceMember[]
-  inviteTokens InviteToken[]
-  appointments Appointment[]
-  medications  Medication[]
-  notes        Note[]
-  doseLogs     DoseLog[]
-  auditLogs    AuditLog[]
-  syncCursors  SyncCursor[]
+  members                WorkspaceMember[]
+  inviteTokens           InviteToken[]
+  appointments           Appointment[]
+  medications            Medication[]
+  notes                  Note[]
+  doseLogs               DoseLog[]
+  auditLogs              AuditLog[]
+  syncCursors            SyncCursor[]
+  symptoms               Symptom[]
+  appointmentChecklists  AppointmentChecklist[]
+  pushSubscriptions      PushSubscription[]
 
   @@index([name])
 }
@@ -152,9 +166,10 @@ model Appointment {
   syncedAt    DateTime  @default(now())
 
   // Relations
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy User      @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
-  updatedBy User      @relation("AppointmentUpdatedBy", fields: [updatedById], references: [id])
+  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User                   @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User                   @relation("AppointmentUpdatedBy", fields: [updatedById], references: [id])
+  checklists AppointmentChecklist[]
 
   @@index([workspaceId, datetime])
   @@index([workspaceId, deletedAt])
@@ -187,6 +202,12 @@ model Medication {
   updatedAt    DateTime     @updatedAt
   createdById  String
   updatedById  String
+
+  // Refill tracking fields
+  pillCount       Int?
+  pillsPerDose    Int?      @default(1)
+  refillThreshold Int?      @default(7)
+  lastRefillDate  DateTime?
 
   // Sync tracking
   version      Int          @default(1)
@@ -288,6 +309,88 @@ model AuditLog {
 
   @@index([workspaceId, createdAt])
   @@index([entityType, entityId])
+}
+
+// ============================================
+// SYMPTOMS
+// ============================================
+
+enum SymptomType {
+  FATIGUE
+  NAUSEA
+  PAIN
+  APPETITE
+  SLEEP
+  MOOD
+  CUSTOM
+}
+
+model Symptom {
+  id          String      @id @default(cuid())
+  workspaceId String
+  type        SymptomType
+  customName  String?     // Only used when type is CUSTOM
+  severity    Int         // 1-5 scale
+  notes       String?
+  recordedAt  DateTime    @default(now())
+  deletedAt   DateTime?
+  createdById String
+
+  // Sync tracking
+  version     Int         @default(1)
+  syncedAt    DateTime    @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@index([workspaceId, recordedAt])
+  @@index([workspaceId, type])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// APPOINTMENT CHECKLIST
+// ============================================
+
+model AppointmentChecklist {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  appointmentId String
+  item          String
+  isReady       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, appointmentId, item])
+  @@index([appointmentId])
+  @@index([workspaceId])
+}
+
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
+
+model PushSubscription {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  endpoint    String
+  p256dh      String
+  auth        String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([workspaceId])
 }
 
 // ============================================

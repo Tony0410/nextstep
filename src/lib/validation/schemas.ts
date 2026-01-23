@@ -24,6 +24,26 @@ export const updateWorkspaceSchema = z.object({
   quietHoursStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).nullable().optional(),
   quietHoursEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).nullable().optional(),
   largeTextMode: z.boolean().optional(),
+  // Emergency info fields
+  patientName: z.string().max(100).nullable().optional(),
+  patientDOB: z.string().datetime().nullable().optional(),
+  bloodType: z.string().max(10).nullable().optional(),
+  allergies: z.string().max(1000).nullable().optional(),
+  medicalConditions: z.string().max(2000).nullable().optional(),
+  primaryPhysician: z.string().max(100).nullable().optional(),
+  physicianPhone: z.string().max(50).nullable().optional(),
+})
+
+export const emergencyInfoSchema = z.object({
+  patientName: z.string().max(100).nullable().optional(),
+  patientDOB: z.string().datetime().nullable().optional(),
+  bloodType: z.string().max(10).nullable().optional(),
+  allergies: z.string().max(1000).nullable().optional(),
+  medicalConditions: z.string().max(2000).nullable().optional(),
+  primaryPhysician: z.string().max(100).nullable().optional(),
+  physicianPhone: z.string().max(50).nullable().optional(),
+  clinicPhone: z.string().max(50).nullable().optional(),
+  emergencyPhone: z.string().max(50).nullable().optional(),
 })
 
 export const inviteSchema = z.object({
@@ -108,8 +128,8 @@ export const syncQuerySchema = z.object({
 
 export const syncOpSchema = z.object({
   id: z.string(),
-  type: z.enum(['CREATE', 'UPDATE', 'DELETE', 'TAKE_DOSE', 'UNDO_DOSE', 'MARK_ASKED']),
-  entityType: z.enum(['APPOINTMENT', 'MEDICATION', 'NOTE', 'DOSE_LOG']),
+  type: z.enum(['CREATE', 'UPDATE', 'DELETE', 'TAKE_DOSE', 'UNDO_DOSE', 'MARK_ASKED', 'UNMARK_ASKED', 'REFILL', 'LOG_SYMPTOM', 'DELETE_SYMPTOM']),
+  entityType: z.enum(['APPOINTMENT', 'MEDICATION', 'NOTE', 'DOSE_LOG', 'SYMPTOM']),
   entityId: z.string().optional(),
   data: z.record(z.unknown()).optional(),
   timestamp: z.number(),
@@ -120,15 +140,45 @@ export const syncOpsSchema = z.object({
   ops: z.array(syncOpSchema),
 })
 
+// Symptom schemas
+export const symptomTypeEnum = z.enum(['FATIGUE', 'NAUSEA', 'PAIN', 'APPETITE', 'SLEEP', 'MOOD', 'CUSTOM'])
+
+export const symptomSchema = z.object({
+  type: symptomTypeEnum,
+  customName: z.string().max(100).nullable().optional(),
+  severity: z.number().min(1).max(5),
+  notes: z.string().max(2000).nullable().optional(),
+  recordedAt: z.string().datetime().optional(),
+})
+
+// Medication refill schema
+export const refillSchema = z.object({
+  pillCount: z.number().min(0).optional(),
+  pillsPerDose: z.number().min(1).default(1).optional(),
+  refillThreshold: z.number().min(0).default(7).optional(),
+  lastRefillDate: z.string().datetime().nullable().optional(),
+})
+
+export const medicationWithRefillSchema = medicationSchema.extend({
+  pillCount: z.number().min(0).nullable().optional(),
+  pillsPerDose: z.number().min(1).nullable().optional(),
+  refillThreshold: z.number().min(0).nullable().optional(),
+  lastRefillDate: z.string().datetime().nullable().optional(),
+})
+
 // Type exports
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>
 export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>
+export type EmergencyInfoInput = z.infer<typeof emergencyInfoSchema>
 export type InviteInput = z.infer<typeof inviteSchema>
 export type AppointmentInput = z.infer<typeof appointmentSchema>
 export type MedicationInput = z.infer<typeof medicationSchema>
+export type MedicationWithRefillInput = z.infer<typeof medicationWithRefillSchema>
 export type ScheduleDataInput = z.infer<typeof scheduleDataSchema>
 export type DoseLogInput = z.infer<typeof doseLogSchema>
 export type NoteInput = z.infer<typeof noteSchema>
+export type SymptomInput = z.infer<typeof symptomSchema>
+export type SymptomType = z.infer<typeof symptomTypeEnum>
 export type SyncOp = z.infer<typeof syncOpSchema>

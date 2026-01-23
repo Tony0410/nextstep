@@ -33,7 +33,7 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
     const sinceDate = new Date(since)
 
     // Fetch all changed entities
-    const [appointments, medications, notes, doseLogs, workspace] = await Promise.all([
+    const [appointments, medications, notes, doseLogs, symptoms, workspace] = await Promise.all([
       prisma.appointment.findMany({
         where: { workspaceId, syncedAt: { gt: sinceDate } },
         include: {
@@ -63,6 +63,12 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
           undoneBy: { select: { id: true, name: true } },
         },
       }),
+      prisma.symptom.findMany({
+        where: { workspaceId, syncedAt: { gt: sinceDate } },
+        include: {
+          createdBy: { select: { id: true, name: true } },
+        },
+      }),
       prisma.workspace.findUnique({
         where: { id: workspaceId },
         select: {
@@ -74,13 +80,21 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
           quietHoursEnd: true,
           largeTextMode: true,
           updatedAt: true,
+          // Emergency info fields
+          patientName: true,
+          patientDOB: true,
+          bloodType: true,
+          allergies: true,
+          medicalConditions: true,
+          primaryPhysician: true,
+          physicianPhone: true,
         },
       }),
     ])
 
     // Calculate new cursor (latest syncedAt timestamp)
     let cursor = since
-    const allItems = [...appointments, ...medications, ...notes, ...doseLogs]
+    const allItems = [...appointments, ...medications, ...notes, ...doseLogs, ...symptoms]
     for (const item of allItems) {
       const itemTime = (item as { syncedAt: Date }).syncedAt.getTime()
       if (itemTime > cursor) {
@@ -94,6 +108,7 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
       medications,
       notes,
       doseLogs,
+      symptoms,
       cursor,
       hasConflicts: false, // For now, always false - client handles conflicts
     })
@@ -288,6 +303,64 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
               data: {
                 askedAt: new Date(),
                 updatedById: req.session.user.id,
+                version: { increment: 1 },
+                syncedAt: new Date(),
+              },
+            })
+            results.push({ opId: op.id, success: true })
+            break
+          }
+
+          case 'UNMARK_ASKED': {
+            if (!op.entityId) {
+              results.push({ opId: op.id, success: false, error: 'Missing entityId' })
+              break
+            }
+
+            await prisma.note.update({
+              where: { id: op.entityId },
+              data: {
+                askedAt: null,
+                updatedById: req.session.user.id,
+                version: { increment: 1 },
+                syncedAt: new Date(),
+              },
+            })
+            results.push({ opId: op.id, success: true })
+            break
+          }
+
+          case 'LOG_SYMPTOM': {
+            if (!op.data) {
+              results.push({ opId: op.id, success: false, error: 'Missing symptom data' })
+              break
+            }
+
+            const symptom = await prisma.symptom.create({
+              data: {
+                workspaceId,
+                type: op.data.type as 'FATIGUE' | 'NAUSEA' | 'PAIN' | 'APPETITE' | 'SLEEP' | 'MOOD' | 'CUSTOM',
+                customName: (op.data.customName as string) || null,
+                severity: op.data.severity as number,
+                notes: (op.data.notes as string) || null,
+                recordedAt: op.data.recordedAt ? new Date(op.data.recordedAt as string) : new Date(),
+                createdById: req.session.user.id,
+              },
+            })
+            results.push({ opId: op.id, success: true, entityId: symptom.id })
+            break
+          }
+
+          case 'DELETE_SYMPTOM': {
+            if (!op.entityId) {
+              results.push({ opId: op.id, success: false, error: 'Missing entityId' })
+              break
+            }
+
+            await prisma.symptom.update({
+              where: { id: op.entityId },
+              data: {
+                deletedAt: new Date(),
                 version: { increment: 1 },
                 syncedAt: new Date(),
               },

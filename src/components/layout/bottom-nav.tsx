@@ -3,13 +3,13 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { clsx } from 'clsx'
-import { Home, Calendar, Pill, FileText, MoreHorizontal } from 'lucide-react'
+import { Home, Calendar, Pill, Activity, MoreHorizontal } from 'lucide-react'
 
 const navItems = [
   { href: '/today', label: 'Today', icon: Home },
-  { href: '/appointments', label: 'Appointments', icon: Calendar },
+  { href: '/appointments', label: 'Appts', icon: Calendar },
   { href: '/meds', label: 'Meds', icon: Pill },
-  { href: '/notes', label: 'Notes', icon: FileText },
+  { href: '/symptoms', label: 'Symptoms', icon: Activity },
   { href: '/settings', label: 'More', icon: MoreHorizontal },
 ]
 

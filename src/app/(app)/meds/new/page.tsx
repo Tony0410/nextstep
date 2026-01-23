@@ -47,6 +47,12 @@ export default function NewMedicationPage() {
   // PRN
   const [minHoursBetween, setMinHoursBetween] = useState(4)
 
+  // Refill tracking (optional)
+  const [trackRefills, setTrackRefills] = useState(false)
+  const [pillCount, setPillCount] = useState<number | ''>('')
+  const [pillsPerDose, setPillsPerDose] = useState(1)
+  const [refillThreshold, setRefillThreshold] = useState(7)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -102,6 +108,12 @@ export default function NewMedicationPage() {
             scheduleType,
             scheduleData: buildScheduleData(),
             active: true,
+            // Refill tracking (optional)
+            ...(trackRefills && pillCount !== '' && {
+              pillCount: Number(pillCount),
+              pillsPerDose,
+              refillThreshold,
+            }),
           }),
         }
       )
@@ -247,6 +259,53 @@ export default function NewMedicationPage() {
                 helperText="Shows 'Available' when enough time has passed since last dose"
               />
             )}
+
+            {/* Refill Tracking (optional) */}
+            <div className="border-t border-border pt-5">
+              <div className="flex items-center gap-3 mb-4">
+                <input
+                  type="checkbox"
+                  id="trackRefills"
+                  checked={trackRefills}
+                  onChange={(e) => setTrackRefills(e.target.checked)}
+                  className="w-5 h-5 rounded border-border text-primary-600 focus:ring-primary-500"
+                />
+                <label htmlFor="trackRefills" className="text-sm font-medium text-secondary-700">
+                  Track pill count for refill reminders (optional)
+                </label>
+              </div>
+
+              {trackRefills && (
+                <div className="space-y-4 pl-8">
+                  <Input
+                    label="Current pill count"
+                    type="number"
+                    min={0}
+                    value={pillCount}
+                    onChange={(e) => setPillCount(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    placeholder="e.g., 30"
+                    helperText="How many pills do you have now?"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Pills per dose"
+                      type="number"
+                      min={1}
+                      value={pillsPerDose}
+                      onChange={(e) => setPillsPerDose(parseInt(e.target.value) || 1)}
+                    />
+                    <Input
+                      label="Alert when below"
+                      type="number"
+                      min={0}
+                      value={refillThreshold}
+                      onChange={(e) => setRefillThreshold(parseInt(e.target.value) || 7)}
+                      helperText="pills"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {error && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-button">

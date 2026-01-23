@@ -30,6 +30,11 @@ export interface LocalMedication {
   syncedAt: string
   createdBy?: { id: string; name: string }
   updatedBy?: { id: string; name: string }
+  // Refill tracking fields
+  pillCount: number | null
+  pillsPerDose: number | null
+  refillThreshold: number | null
+  lastRefillDate: string | null
 }
 
 export interface LocalNote {
@@ -68,13 +73,37 @@ export interface LocalWorkspace {
   largeTextMode: boolean
   role?: string
   updatedAt: string
+  // Emergency info fields
+  patientName: string | null
+  patientDOB: string | null
+  bloodType: string | null
+  allergies: string | null
+  medicalConditions: string | null
+  primaryPhysician: string | null
+  physicianPhone: string | null
+}
+
+export type SymptomType = 'FATIGUE' | 'NAUSEA' | 'PAIN' | 'APPETITE' | 'SLEEP' | 'MOOD' | 'CUSTOM'
+
+export interface LocalSymptom {
+  id: string
+  workspaceId: string
+  type: SymptomType
+  customName: string | null
+  severity: number
+  notes: string | null
+  recordedAt: string
+  deletedAt: string | null
+  version: number
+  syncedAt: string
+  createdBy?: { id: string; name: string }
 }
 
 export interface SyncOp {
   id: string
   workspaceId: string
-  type: 'CREATE' | 'UPDATE' | 'DELETE' | 'TAKE_DOSE' | 'UNDO_DOSE' | 'MARK_ASKED'
-  entityType: 'APPOINTMENT' | 'MEDICATION' | 'NOTE' | 'DOSE_LOG'
+  type: 'CREATE' | 'UPDATE' | 'DELETE' | 'TAKE_DOSE' | 'UNDO_DOSE' | 'MARK_ASKED' | 'UNMARK_ASKED' | 'REFILL' | 'LOG_SYMPTOM' | 'DELETE_SYMPTOM'
+  entityType: 'APPOINTMENT' | 'MEDICATION' | 'NOTE' | 'DOSE_LOG' | 'SYMPTOM'
   entityId?: string
   data?: Record<string, unknown>
   timestamp: number
@@ -94,18 +123,32 @@ class NextStepDB extends Dexie {
   notes!: Table<LocalNote, string>
   doseLogs!: Table<LocalDoseLog, string>
   workspaces!: Table<LocalWorkspace, string>
+  symptoms!: Table<LocalSymptom, string>
   outbox!: Table<SyncOp, string>
   syncMeta!: Table<SyncMeta, string>
 
   constructor() {
     super('NextStepDB')
 
+    // Version 1: Original schema
     this.version(1).stores({
       appointments: 'id, workspaceId, datetime, deletedAt',
       medications: 'id, workspaceId, active, deletedAt',
       notes: 'id, workspaceId, type, deletedAt',
       doseLogs: 'id, medicationId, workspaceId, takenAt',
       workspaces: 'id',
+      outbox: 'id, workspaceId, timestamp',
+      syncMeta: 'id, workspaceId',
+    })
+
+    // Version 2: Add symptoms table, extend workspace & medication fields
+    this.version(2).stores({
+      appointments: 'id, workspaceId, datetime, deletedAt',
+      medications: 'id, workspaceId, active, deletedAt',
+      notes: 'id, workspaceId, type, deletedAt',
+      doseLogs: 'id, medicationId, workspaceId, takenAt',
+      workspaces: 'id',
+      symptoms: 'id, workspaceId, type, recordedAt, deletedAt',
       outbox: 'id, workspaceId, timestamp',
       syncMeta: 'id, workspaceId',
     })

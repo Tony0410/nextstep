@@ -16,6 +16,8 @@ interface Workspace {
   clinicPhone: string | null
   emergencyPhone: string | null
   largeTextMode: boolean
+  quietHoursStart: string | null
+  quietHoursEnd: string | null
 }
 
 interface AppContextType {

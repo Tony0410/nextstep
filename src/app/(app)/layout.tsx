@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db/prisma'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import { ServiceWorkerRegistrar } from '@/components/notifications/ServiceWorkerRegistrar'
 import { AppProvider } from './provider'
 
 export default async function AppLayout({
@@ -36,6 +37,8 @@ export default async function AppLayout({
     clinicPhone: m.workspace.clinicPhone,
     emergencyPhone: m.workspace.emergencyPhone,
     largeTextMode: m.workspace.largeTextMode,
+    quietHoursStart: m.workspace.quietHoursStart,
+    quietHoursEnd: m.workspace.quietHoursEnd,
   }))
 
   return (
@@ -44,6 +47,7 @@ export default async function AppLayout({
       workspaces={workspaces}
       initialWorkspaceId={workspaces[0].id}
     >
+      <ServiceWorkerRegistrar />
       <div className={workspaces[0].largeTextMode ? 'large-text' : ''}>
         {children}
         <BottomNav />

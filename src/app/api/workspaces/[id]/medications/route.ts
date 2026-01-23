@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { checkWorkspaceAccess, canEdit } from '@/lib/db/workspace-access'
 import { withAuth, type AuthenticatedRequest } from '@/lib/auth'
-import { medicationSchema } from '@/lib/validation'
+import { medicationWithRefillSchema } from '@/lib/validation'
 
 // GET /api/workspaces/[id]/medications - List medications
 export const GET = withAuth(async (req: AuthenticatedRequest, { params }) => {
@@ -60,7 +60,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest, { params }) => {
     }
 
     const body = await req.json()
-    const result = medicationSchema.safeParse(body)
+    const result = medicationWithRefillSchema.safeParse(body)
 
     if (!result.success) {
       return NextResponse.json(
@@ -79,6 +79,11 @@ export const POST = withAuth(async (req: AuthenticatedRequest, { params }) => {
         startDate: result.data.startDate ? new Date(result.data.startDate) : null,
         endDate: result.data.endDate ? new Date(result.data.endDate) : null,
         active: result.data.active ?? true,
+        // Refill tracking fields
+        pillCount: result.data.pillCount ?? null,
+        pillsPerDose: result.data.pillsPerDose ?? 1,
+        refillThreshold: result.data.refillThreshold ?? 7,
+        lastRefillDate: result.data.lastRefillDate ? new Date(result.data.lastRefillDate) : null,
         createdById: req.session.user.id,
         updatedById: req.session.user.id,
       },

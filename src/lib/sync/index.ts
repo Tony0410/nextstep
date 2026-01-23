@@ -25,4 +25,5 @@ export {
   logDose,
   undoDose,
   markQuestionAsked,
+  unmarkQuestionAsked,
 } from './manager'

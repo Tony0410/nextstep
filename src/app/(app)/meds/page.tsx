@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Pill, Clock, ChevronRight, History } from 'lucide-react'
+import { Plus, Pill, Clock, ChevronRight, History, AlertTriangle } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
@@ -10,6 +10,7 @@ import { calculateAllMedicationsDue, formatTimeUntil } from '@/lib/schedule'
 import type { Medication, DoseLog, MedicationDueStatus } from '@/lib/schedule'
 import { Card, Button, LoadingState, EmptyState, showUndoToast, showToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
+import { RefillAlert } from '@/components/medications/RefillAlert'
 import { useApp } from '../provider'
 
 export default function MedsPage() {
@@ -119,15 +120,25 @@ export default function MedsPage() {
           onClick: () => router.push('/meds/new'),
         }}
       />
-      <PageContainer className="pt-4">
+      <PageContainer className="pt-4 space-y-4">
         {/* History link */}
         <button
           onClick={() => router.push('/meds/history')}
-          className="flex items-center gap-2 text-primary-600 font-medium mb-4"
+          className="flex items-center gap-2 text-primary-600 font-medium"
         >
           <History className="w-4 h-4" />
           View dose history
         </button>
+
+        {/* Refill Alerts */}
+        <RefillAlert
+          medications={medications.map(m => ({
+            id: m.id,
+            name: m.name,
+            pillCount: m.pillCount,
+            refillThreshold: m.refillThreshold,
+          }))}
+        />
 
         {medications.length === 0 ? (
           <EmptyState
@@ -206,6 +217,12 @@ interface MedicationCardProps {
 function MedicationCard({ status, now, onTake, onClick }: MedicationCardProps) {
   const { medication, isOverdue, isPRN, prnAvailable, prnAvailableAt, nextDueAt } = status
 
+  // Check for low pill count
+  const med = medication as unknown as { pillCount?: number | null; refillThreshold?: number | null }
+  const isLowOnPills = med.pillCount !== undefined && med.pillCount !== null &&
+    med.refillThreshold !== undefined && med.refillThreshold !== null &&
+    med.pillCount <= med.refillThreshold
+
   const getTimeLabel = () => {
     if (isOverdue && nextDueAt) {
       return formatTimeUntil(nextDueAt, now)
@@ -230,11 +247,18 @@ function MedicationCard({ status, now, onTake, onClick }: MedicationCardProps) {
   return (
     <Card className={isOverdue ? 'overdue' : ''} onClick={onClick}>
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-          <Pill className="w-5 h-5 text-primary-600" />
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLowOnPills ? 'bg-orange-100' : 'bg-primary-100'}`}>
+          <Pill className={`w-5 h-5 ${isLowOnPills ? 'text-orange-600' : 'text-primary-600'}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-secondary-900">{medication.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-secondary-900">{medication.name}</h3>
+            {isLowOnPills && (
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                {med.pillCount} left
+              </span>
+            )}
+          </div>
           <p className={`text-sm flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-secondary-500'}`}>
             <Clock className="w-3.5 h-3.5" />
             {getTimeLabel()}

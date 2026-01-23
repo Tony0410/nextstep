@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus } from 'lucide-react'
+import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus, AlertTriangle, ClipboardCheck } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
@@ -12,6 +12,7 @@ import { calculateAllMedicationsDue, formatTimeUntil } from '@/lib/schedule'
 import type { Medication, DoseLog, MedicationDueStatus } from '@/lib/schedule'
 import { Card, CardTitle, Button, LoadingState, EmptyState, showUndoToast, showToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
+import { RefillAlert } from '@/components/medications/RefillAlert'
 import { useApp } from '../provider'
 
 const TIMEZONE = 'Australia/Perth'
@@ -173,21 +174,38 @@ export default function TodayPage() {
           </p>
         </div>
 
-        {/* Call Clinic Button */}
-        {currentWorkspace.clinicPhone && (
-          <a
-            href={`tel:${currentWorkspace.clinicPhone}`}
-            className="flex items-center gap-3 p-4 bg-primary-50 rounded-card border border-primary-100 hover:bg-primary-100 transition-colors"
+        {/* Emergency & Call Clinic Buttons */}
+        <div className="flex gap-3">
+          {/* Emergency Info Button */}
+          <button
+            onClick={() => router.push('/emergency')}
+            className="flex items-center gap-3 p-4 bg-red-50 rounded-card border border-red-200 hover:bg-red-100 transition-colors flex-1"
           >
-            <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
-              <Phone className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <p className="font-medium text-primary-800">Call Clinic</p>
-              <p className="text-sm text-primary-600">{currentWorkspace.clinicPhone}</p>
+            <div className="text-left">
+              <p className="font-medium text-red-800">Emergency</p>
+              <p className="text-sm text-red-600">Medical info</p>
             </div>
-          </a>
-        )}
+          </button>
+
+          {/* Call Clinic Button */}
+          {currentWorkspace.clinicPhone && (
+            <a
+              href={`tel:${currentWorkspace.clinicPhone}`}
+              className="flex items-center gap-3 p-4 bg-primary-50 rounded-card border border-primary-100 hover:bg-primary-100 transition-colors flex-1"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
+                <Phone className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-primary-800">Call Clinic</p>
+                <p className="text-sm text-primary-600 truncate">{currentWorkspace.clinicPhone}</p>
+              </div>
+            </a>
+          )}
+        </div>
 
         {/* Next Appointment */}
         <section>
@@ -257,6 +275,51 @@ export default function TodayPage() {
             </Card>
           )}
         </section>
+
+        {/* Prep Reminder for Tomorrow's Appointment */}
+        {appointments && appointments.length > 0 && (() => {
+          const tomorrowAppt = appointments.find((appt) =>
+            isTomorrow(toZonedTime(new Date(appt.datetime), TIMEZONE))
+          )
+          if (tomorrowAppt) {
+            return (
+              <section>
+                <Card
+                  className="bg-green-50 border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                  onClick={() => router.push(`/appointments/${tomorrowAppt.id}/prep`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                      <ClipboardCheck className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800">
+                        Prepare for tomorrow
+                      </p>
+                      <p className="text-sm text-green-600">
+                        {tomorrowAppt.title} at {format(toZonedTime(new Date(tomorrowAppt.datetime), TIMEZONE), 'h:mm a')}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-green-500" />
+                  </div>
+                </Card>
+              </section>
+            )
+          }
+          return null
+        })()}
+
+        {/* Refill Alerts */}
+        {medications && medications.length > 0 && (
+          <RefillAlert
+            medications={medications.map(m => ({
+              id: m.id,
+              name: m.name,
+              pillCount: m.pillCount,
+              refillThreshold: m.refillThreshold,
+            }))}
+          />
+        )}
 
         {/* Meds Due */}
         <section>

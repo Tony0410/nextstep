@@ -1,5 +1,5 @@
 import { db, generateTempId, type SyncOp } from './db'
-import type { LocalAppointment, LocalMedication, LocalNote, LocalDoseLog } from './db'
+import type { LocalAppointment, LocalMedication, LocalNote, LocalDoseLog, LocalSymptom } from './db'
 
 const SYNC_INTERVAL = 30000 // 30 seconds
 const MAX_RETRIES = 3
@@ -70,12 +70,20 @@ export async function pullChanges(workspaceId: string): Promise<boolean> {
     const data = await response.json()
 
     // Update local database
-    await db.transaction('rw', [db.appointments, db.medications, db.notes, db.doseLogs, db.workspaces, db.syncMeta], async () => {
-      // Update workspace
+    await db.transaction('rw', [db.appointments, db.medications, db.notes, db.doseLogs, db.symptoms, db.workspaces, db.syncMeta], async () => {
+      // Update workspace (including emergency info fields)
       if (data.workspace) {
         await db.workspaces.put({
           ...data.workspace,
           updatedAt: data.workspace.updatedAt || new Date().toISOString(),
+          // Ensure emergency fields are properly set (even if null)
+          patientName: data.workspace.patientName || null,
+          patientDOB: data.workspace.patientDOB || null,
+          bloodType: data.workspace.bloodType || null,
+          allergies: data.workspace.allergies || null,
+          medicalConditions: data.workspace.medicalConditions || null,
+          primaryPhysician: data.workspace.primaryPhysician || null,
+          physicianPhone: data.workspace.physicianPhone || null,
         })
       }
 
@@ -132,6 +140,18 @@ export async function pullChanges(workspaceId: string): Promise<boolean> {
         }
       }
 
+      // Update symptoms
+      for (const symptom of data.symptoms || []) {
+        const existing = await db.symptoms.get(symptom.id)
+        if (!existing || new Date(symptom.syncedAt) > new Date(existing.syncedAt)) {
+          await db.symptoms.put({
+            ...symptom,
+            recordedAt: symptom.recordedAt,
+            syncedAt: symptom.syncedAt,
+          })
+        }
+      }
+
       // Update sync cursor
       await db.syncMeta.put({
         id: workspaceId,
@@ -179,7 +199,7 @@ export async function pushChanges(workspaceId: string): Promise<boolean> {
     const data = await response.json()
 
     // Process results and remove successful ops from outbox
-    await db.transaction('rw', [db.outbox, db.appointments, db.notes], async () => {
+    await db.transaction('rw', [db.outbox, db.appointments, db.notes, db.symptoms], async () => {
       for (const result of data.results) {
         if (result.success) {
           // Find the op
@@ -197,6 +217,12 @@ export async function pushChanges(workspaceId: string): Promise<boolean> {
               if (local) {
                 await db.notes.delete(op.entityId)
                 await db.notes.put({ ...local, id: result.entityId })
+              }
+            } else if (op.entityType === 'SYMPTOM') {
+              const local = await db.symptoms.get(op.entityId)
+              if (local) {
+                await db.symptoms.delete(op.entityId)
+                await db.symptoms.put({ ...local, id: result.entityId })
               }
             }
           }
@@ -408,6 +434,14 @@ export async function logDose(
   }
 
   await db.doseLogs.add(doseLog)
+
+  // Decrement pill count if tracking is enabled
+  const localMed = await db.medications.get(medicationId)
+  if (localMed && localMed.pillCount !== null && localMed.pillsPerDose !== null) {
+    const newCount = Math.max(0, localMed.pillCount - (localMed.pillsPerDose || 1))
+    await db.medications.update(medicationId, { pillCount: newCount })
+  }
+
   await addToOutbox({
     workspaceId,
     type: 'TAKE_DOSE',
@@ -423,6 +457,13 @@ export async function logDose(
 export async function undoDose(doseLog: LocalDoseLog): Promise<void> {
   const now = new Date().toISOString()
   await db.doseLogs.update(doseLog.id, { undoneAt: now })
+
+  // Restore pill count if tracking is enabled
+  const localMed = await db.medications.get(doseLog.medicationId)
+  if (localMed && localMed.pillCount !== null && localMed.pillsPerDose !== null) {
+    const newCount = localMed.pillCount + (localMed.pillsPerDose || 1)
+    await db.medications.update(doseLog.medicationId, { pillCount: newCount })
+  }
 
   await addToOutbox({
     workspaceId: doseLog.workspaceId,
@@ -442,6 +483,78 @@ export async function markQuestionAsked(note: LocalNote): Promise<void> {
     type: 'MARK_ASKED',
     entityType: 'NOTE',
     entityId: note.id,
+    timestamp: Date.now(),
+  })
+}
+
+export async function unmarkQuestionAsked(note: LocalNote): Promise<void> {
+  await db.notes.update(note.id, { askedAt: null })
+
+  await addToOutbox({
+    workspaceId: note.workspaceId,
+    type: 'UNMARK_ASKED',
+    entityType: 'NOTE',
+    entityId: note.id,
+    timestamp: Date.now(),
+  })
+}
+
+export async function logSymptom(
+  workspaceId: string,
+  data: {
+    type: LocalSymptom['type']
+    customName?: string
+    severity: number
+    notes?: string
+  }
+): Promise<LocalSymptom> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const symptom: LocalSymptom = {
+    id,
+    workspaceId,
+    type: data.type,
+    customName: data.customName || null,
+    severity: data.severity,
+    notes: data.notes || null,
+    recordedAt: now,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.symptoms.add(symptom)
+  await addToOutbox({
+    workspaceId,
+    type: 'LOG_SYMPTOM',
+    entityType: 'SYMPTOM',
+    entityId: id,
+    data: {
+      type: data.type,
+      customName: data.customName,
+      severity: data.severity,
+      notes: data.notes,
+      recordedAt: now,
+    },
+    timestamp: Date.now(),
+  })
+
+  return symptom
+}
+
+export async function deleteSymptom(symptom: LocalSymptom): Promise<void> {
+  const now = new Date().toISOString()
+  await db.symptoms.update(symptom.id, {
+    deletedAt: now,
+    version: symptom.version + 1,
+    syncedAt: now,
+  })
+
+  await addToOutbox({
+    workspaceId: symptom.workspaceId,
+    type: 'DELETE_SYMPTOM',
+    entityType: 'SYMPTOM',
+    entityId: symptom.id,
     timestamp: Date.now(),
   })
 }

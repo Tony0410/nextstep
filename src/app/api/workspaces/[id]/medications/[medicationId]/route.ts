@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { checkWorkspaceAccess, canEdit } from '@/lib/db/workspace-access'
 import { withAuth, type AuthenticatedRequest } from '@/lib/auth'
-import { medicationSchema } from '@/lib/validation'
+import { medicationWithRefillSchema } from '@/lib/validation'
 
 // GET /api/workspaces/[id]/medications/[medicationId]
 export const GET = withAuth(async (req: AuthenticatedRequest, { params }) => {
@@ -75,7 +75,7 @@ export const PATCH = withAuth(async (req: AuthenticatedRequest, { params }) => {
     }
 
     const body = await req.json()
-    const result = medicationSchema.partial().safeParse(body)
+    const result = medicationWithRefillSchema.partial().safeParse(body)
 
     if (!result.success) {
       return NextResponse.json(
@@ -96,6 +96,9 @@ export const PATCH = withAuth(async (req: AuthenticatedRequest, { params }) => {
     }
     if (result.data.endDate !== undefined) {
       updateData.endDate = result.data.endDate ? new Date(result.data.endDate) : null
+    }
+    if (result.data.lastRefillDate !== undefined) {
+      updateData.lastRefillDate = result.data.lastRefillDate ? new Date(result.data.lastRefillDate) : null
     }
 
     const medication = await prisma.medication.update({

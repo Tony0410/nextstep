@@ -3,11 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { format, isToday, isTomorrow, parseISO, startOfDay } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { Plus, Calendar, MapPin, Clock, ChevronRight } from 'lucide-react'
+import { Plus, Calendar, MapPin, Clock, ChevronRight, CalendarDays } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '@/lib/sync'
-import { Card, LoadingState, EmptyState } from '@/components/ui'
+import { Card, LoadingState, EmptyState, Button } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
 import { useApp } from '../provider'
 
@@ -59,9 +59,9 @@ export default function AppointmentsPage() {
         <Header
           title="Appointments"
           rightAction={{
-            icon: <Plus className="w-6 h-6 text-secondary-700" />,
-            label: 'Add appointment',
-            onClick: () => router.push('/appointments/new'),
+            icon: <CalendarDays className="w-6 h-6 text-secondary-700" />,
+            label: 'Calendar view',
+            onClick: () => router.push('/appointments/calendar'),
           }}
         />
         <PageContainer>
@@ -76,9 +76,9 @@ export default function AppointmentsPage() {
       <Header
         title="Appointments"
         rightAction={{
-          icon: <Plus className="w-6 h-6 text-secondary-700" />,
-          label: 'Add appointment',
-          onClick: () => router.push('/appointments/new'),
+          icon: <CalendarDays className="w-6 h-6 text-secondary-700" />,
+          label: 'Calendar view',
+          onClick: () => router.push('/appointments/calendar'),
         }}
       />
       <PageContainer className="pt-4">
@@ -158,6 +158,16 @@ export default function AppointmentsPage() {
             })}
           </div>
         )}
+
+        {/* Add appointment FAB */}
+        <div className="fixed bottom-20 right-4 z-30">
+          <Button
+            onClick={() => router.push('/appointments/new')}
+            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center"
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
+        </div>
       </PageContainer>
     </>
   )
