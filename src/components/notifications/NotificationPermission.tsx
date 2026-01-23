@@ -79,12 +79,39 @@ export function NotificationPermission({ workspaceId }: NotificationPermissionPr
       }
       const { publicKey } = await keyResponse.json()
 
-      // Wait for service worker with timeout
-      const registrationPromise = navigator.serviceWorker.ready
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Service worker not ready - try refreshing the page')), 10000)
-      )
-      const registration = await Promise.race([registrationPromise, timeoutPromise])
+      // Ensure service worker is registered and active
+      let registration: ServiceWorkerRegistration
+
+      // First, try to register the service worker (in case it wasn't registered yet)
+      try {
+        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+
+        // Wait for it to be active
+        if (registration.installing || registration.waiting) {
+          await new Promise<void>((resolve, reject) => {
+            const sw = registration.installing || registration.waiting
+            if (!sw) {
+              resolve()
+              return
+            }
+
+            const timeout = setTimeout(() => reject(new Error('Service worker activation timeout')), 10000)
+
+            sw.addEventListener('statechange', () => {
+              if (sw.state === 'activated') {
+                clearTimeout(timeout)
+                resolve()
+              } else if (sw.state === 'redundant') {
+                clearTimeout(timeout)
+                reject(new Error('Service worker became redundant'))
+              }
+            })
+          })
+        }
+      } catch (regError: any) {
+        console.error('Service worker registration error:', regError)
+        throw new Error('Failed to register service worker: ' + regError.message)
+      }
 
       // Check if push manager is available
       if (!registration.pushManager) {
