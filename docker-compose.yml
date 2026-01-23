@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEFs_VtoxY7SpNnd-ubz1ioliESlRI4sY6ny7Qp3rm7V1cm0gqyZX8TAHp4AaQ81yKC4LfWtJFQz_aHc25G-Tww
     container_name: nextstep-app
     restart: unless-stopped
     ports:
@@ -13,6 +15,10 @@ services:
       - NEXT_PUBLIC_APP_URL=https://debianvm.kangaroo-eel.ts.net:10000
       - TZ=Australia/Perth
       - NODE_ENV=production
+      # Push notification VAPID keys
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEFs_VtoxY7SpNnd-ubz1ioliESlRI4sY6ny7Qp3rm7V1cm0gqyZX8TAHp4AaQ81yKC4LfWtJFQz_aHc25G-Tww
+      - VAPID_PRIVATE_KEY=KgVQVO7XhfCklrJ3o9wowzK90AxI6Exg9pXPq76Qx4A
+      - VAPID_EMAIL=mailto:admin@nextstep.local
     depends_on:
       db:
         condition: service_healthy

@@ -23,6 +23,10 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Build args for NEXT_PUBLIC_* variables (needed at build time)
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
+
 RUN npm run build
 
 # Stage 3: Runner (using slim Debian for better OpenSSL compatibility)
