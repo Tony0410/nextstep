@@ -1,5 +1,7 @@
 import { format, addHours } from 'date-fns'
 
+const TIMEZONE = 'Australia/Perth'
+
 interface Appointment {
   id: string
   title: string
@@ -35,8 +37,19 @@ export function generateICalendar(
     'VERSION:2.0',
     'PRODID:-//NextStep//Health Management//EN',
     `X-WR-CALNAME:${escapeICalText(workspaceName)}`,
+    `X-WR-TIMEZONE:${TIMEZONE}`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    // Add timezone definition for Australia/Perth
+    'BEGIN:VTIMEZONE',
+    `TZID:${TIMEZONE}`,
+    'BEGIN:STANDARD',
+    'DTSTART:19700101T000000',
+    'TZOFFSETFROM:+0800',
+    'TZOFFSETTO:+0800',
+    'TZNAME:AWST',
+    'END:STANDARD',
+    'END:VTIMEZONE',
   ]
 
   for (const appt of appointments) {
@@ -45,9 +58,9 @@ export function generateICalendar(
 
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${appt.id}@nextstep`)
-    lines.push(`DTSTAMP:${formatICalDate(new Date())}`)
-    lines.push(`DTSTART:${formatICalDate(startDate)}`)
-    lines.push(`DTEND:${formatICalDate(endDate)}`)
+    lines.push(`DTSTAMP:${formatICalDateUTC(new Date())}`)
+    lines.push(`DTSTART;TZID=${TIMEZONE}:${formatICalDateLocal(startDate)}`)
+    lines.push(`DTEND;TZID=${TIMEZONE}:${formatICalDateLocal(endDate)}`)
     lines.push(`SUMMARY:${escapeICalText(appt.title)}`)
 
     if (appt.location) {
@@ -116,9 +129,9 @@ export function generateMedicationEvents(
 
       lines.push('BEGIN:VEVENT')
       lines.push(`UID:med-${med.id}-${dateStr}-${time}@nextstep`)
-      lines.push(`DTSTAMP:${formatICalDate(new Date())}`)
-      lines.push(`DTSTART:${formatICalDate(startDate)}`)
-      lines.push(`DTEND:${formatICalDate(endDate)}`)
+      lines.push(`DTSTAMP:${formatICalDateUTC(new Date())}`)
+      lines.push(`DTSTART;TZID=${TIMEZONE}:${formatICalDateLocal(startDate)}`)
+      lines.push(`DTEND;TZID=${TIMEZONE}:${formatICalDateLocal(endDate)}`)
       lines.push(`SUMMARY:Take ${escapeICalText(med.name)}`)
       lines.push('CATEGORIES:MEDICATION')
 
@@ -161,9 +174,14 @@ function getMedicationTimes(med: Medication): string[] {
   }
 }
 
-function formatICalDate(date: Date): string {
-  // Format: YYYYMMDDTHHMMSSZ
+function formatICalDateUTC(date: Date): string {
+  // Format: YYYYMMDDTHHMMSSZ (UTC)
   return format(date, "yyyyMMdd'T'HHmmss'Z'")
+}
+
+function formatICalDateLocal(date: Date): string {
+  // Format: YYYYMMDDTHHMMSS (local time, no Z suffix)
+  return format(date, "yyyyMMdd'T'HHmmss")
 }
 
 function escapeICalText(text: string): string {
