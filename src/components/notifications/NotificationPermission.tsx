@@ -31,15 +31,28 @@ export function NotificationPermission({ workspaceId }: NotificationPermissionPr
       return
     }
 
+    // Check if PushManager is available (not available in all browsers/contexts)
+    if (!('PushManager' in window)) {
+      setPermission('unsupported')
+      return
+    }
+
     const perm = Notification.permission as PermissionState
     setPermission(perm)
 
     if (perm === 'granted') {
-      // Check if already subscribed
+      // Check if already subscribed with timeout
       try {
-        const registration = await navigator.serviceWorker.ready
-        const subscription = await registration.pushManager.getSubscription()
-        setIsSubscribed(!!subscription)
+        const registrationPromise = navigator.serviceWorker.ready
+        const timeoutPromise = new Promise<ServiceWorkerRegistration>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        )
+        const registration = await Promise.race([registrationPromise, timeoutPromise])
+
+        if (registration.pushManager) {
+          const subscription = await registration.pushManager.getSubscription()
+          setIsSubscribed(!!subscription)
+        }
       } catch (err) {
         console.error('Failed to check subscription:', err)
       }
@@ -66,14 +79,27 @@ export function NotificationPermission({ workspaceId }: NotificationPermissionPr
       }
       const { publicKey } = await keyResponse.json()
 
-      // Register service worker if not already registered
-      const registration = await navigator.serviceWorker.ready
+      // Wait for service worker with timeout
+      const registrationPromise = navigator.serviceWorker.ready
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Service worker not ready - try refreshing the page')), 10000)
+      )
+      const registration = await Promise.race([registrationPromise, timeoutPromise])
 
-      // Subscribe to push
-      const subscription = await registration.pushManager.subscribe({
+      // Check if push manager is available
+      if (!registration.pushManager) {
+        throw new Error('Push notifications not supported on this device')
+      }
+
+      // Subscribe to push with timeout
+      const subscribePromise = registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       })
+      const subscribeTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Push subscription timed out - this device may not support web push')), 15000)
+      )
+      const subscription = await Promise.race([subscribePromise, subscribeTimeout])
 
       // Send subscription to server
       const response = await fetch('/api/notifications/subscribe', {
