@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Clock, Moon } from 'lucide-react'
+import { Bell, Clock, Moon, Send } from 'lucide-react'
 
 import { Card, Button, Input, showToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
@@ -13,6 +13,7 @@ export default function NotificationsSettingsPage() {
   const [quietStart, setQuietStart] = useState(currentWorkspace.quietHoursStart || '22:00')
   const [quietEnd, setQuietEnd] = useState(currentWorkspace.quietHoursEnd || '07:00')
   const [saving, setSaving] = useState(false)
+  const [testingSending, setTestingSending] = useState(false)
 
   const handleSaveQuietHours = async () => {
     setSaving(true)
@@ -37,6 +38,29 @@ export default function NotificationsSettingsPage() {
     }
   }
 
+  const handleTestNotification = async () => {
+    setTestingSending(true)
+    try {
+      const response = await fetch('/api/notifications/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: currentWorkspace.id }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test notification')
+      }
+
+      showToast(data.message, data.success ? 'success' : 'error')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to send test', 'error')
+    } finally {
+      setTestingSending(false)
+    }
+  }
+
   return (
     <>
       <Header title="Notifications" showBack />
@@ -48,6 +72,37 @@ export default function NotificationsSettingsPage() {
           </h2>
           <Card>
             <NotificationPermission workspaceId={currentWorkspace.id} />
+          </Card>
+        </section>
+
+        {/* Test Notification */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Test Notifications
+          </h2>
+          <Card>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Send className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium text-secondary-900">
+                  Send Test Notification
+                </p>
+                <p className="text-sm text-secondary-500">
+                  Verify that notifications are working on your device.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handleTestNotification}
+              loading={testingSending}
+              fullWidth
+              variant="secondary"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Test Notification
+            </Button>
           </Card>
         </section>
 
