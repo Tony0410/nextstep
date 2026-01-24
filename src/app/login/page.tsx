@@ -34,6 +34,14 @@ function LoginForm() {
         return
       }
 
+      // Check if user needs to change password
+      if (data.forcePasswordReset) {
+        showToast('Please change your password to continue', 'info')
+        router.push('/change-password')
+        router.refresh()
+        return
+      }
+
       showToast('Welcome back!', 'success')
       // If there's a redirect param (e.g., from invite link), go there
       router.push(redirectTo || '/today')

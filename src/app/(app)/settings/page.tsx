@@ -289,16 +289,29 @@ export default function SettingsPage() {
             </h2>
             <Card padding="none">
               <button
-                onClick={() => setShowInvite(true)}
+                onClick={() => router.push('/settings/members')}
                 className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
               >
                 <Users className="w-5 h-5 text-secondary-500" />
                 <div className="flex-1 text-left">
-                  <p className="font-medium text-secondary-900">Invite Family Member</p>
-                  <p className="text-sm text-secondary-500">Share access to this workspace</p>
+                  <p className="font-medium text-secondary-900">Manage Members</p>
+                  <p className="text-sm text-secondary-500">View and manage workspace access</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-secondary-300" />
               </button>
+              <div className="border-t border-border">
+                <button
+                  onClick={() => setShowInvite(true)}
+                  className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+                >
+                  <Users className="w-5 h-5 text-secondary-500" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-secondary-900">Invite Family Member</p>
+                    <p className="text-sm text-secondary-500">Share access to this workspace</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-secondary-300" />
+                </button>
+              </div>
             </Card>
           </section>
         )}

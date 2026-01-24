@@ -44,6 +44,7 @@ async function handler(req: NextRequest) {
         email: true,
         name: true,
         passwordHash: true,
+        forcePasswordReset: true,
       },
     })
 
@@ -65,8 +66,14 @@ async function handler(req: NextRequest) {
       )
     }
 
-    // Record successful login
-    await recordLoginAttempt(email.toLowerCase(), true, ipAddress)
+    // Record successful login and update lastLoginAt
+    await Promise.all([
+      recordLoginAttempt(email.toLowerCase(), true, ipAddress),
+      prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      }),
+    ])
 
     // Create session
     const userAgent = req.headers.get('user-agent') || undefined
@@ -79,6 +86,7 @@ async function handler(req: NextRequest) {
         email: user.email,
         name: user.name,
       },
+      forcePasswordReset: user.forcePasswordReset,
     })
 
     response.cookies.set(cookieConfig)
