@@ -31,6 +31,24 @@ services:
       retries: 3
       start_period: 40s
 
+  scheduler:
+    image: alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "apk add --no-cache curl &&
+      while true; do
+        echo 'Triggering notification check...' &&
+        curl -s -X POST http://app:3000/api/notifications/send &&
+        echo '' &&
+        sleep 60;
+      done"
+    networks:
+      - nextstep-network
+
   db:
     image: postgres:16-alpine
     container_name: nextstep-db
