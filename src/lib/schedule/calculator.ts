@@ -133,6 +133,11 @@ function calculateIntervalDue(
   // Calculate how many intervals have passed since start time today
   const minutesSinceStart = differenceInMinutes(now, startToday)
   const intervalMinutes = schedule.hours * 60
+
+  if (intervalMinutes <= 0) {
+    return startToday
+  }
+
   const intervalsPassed = Math.floor(minutesSinceStart / intervalMinutes)
   const nextDue = addMinutes(startToday, (intervalsPassed + 1) * intervalMinutes)
 

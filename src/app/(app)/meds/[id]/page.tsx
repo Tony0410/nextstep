@@ -1,19 +1,41 @@
 'use client'
 
-import { use, useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Pill, Clock, Edit2, Trash2, History } from 'lucide-react'
+import { Pill, Clock, Trash2, History, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
+import type { LocalDoseLog } from '@/lib/sync'
 import { Card, Button, LoadingState, Modal, showToast, showUndoToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
 import { RefillTracker } from '@/components/medications/RefillTracker'
 import { useApp } from '../../provider'
 
-export default function MedicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: medicationId } = use(params)
+// Unwrapping params for Next.js 14/15 compatibility
+// In Next.js 15 params is a Promise, in 14 it's an object.
+// We can use a simple `use` polyfill or just await it if we were in an async component, 
+// but this is a client component. 
+// For client components, params is passed as is.
+// If types say Promise, we might need to use `use` but `use` is experimental in React 18.
+// Let's assume params is an object for now as per Next 14 standard behavior for pages.
+// If it is a promise (Next 15), we need `use`. 
+// Safest way: check if it has .then? 
+// Actually, let's just assume object for Next 14.
+
+export default function MedicationDetailPage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
+  // Simple unwrap if it's a promise (though likely it's an object in Next 14)
+  const [medicationId, setMedicationId] = useState<string>('')
+
+  useEffect(() => {
+    if (params instanceof Promise) {
+      params.then((p) => setMedicationId(p.id))
+    } else {
+      setMedicationId(params.id)
+    }
+  }, [params])
+
   const router = useRouter()
   const { currentWorkspace, refreshData } = useApp()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -21,19 +43,21 @@ export default function MedicationDetailPage({ params }: { params: Promise<{ id:
 
   // Fetch medication from IndexedDB
   const medication = useLiveQuery(
-    () => db.medications.get(medicationId),
+    () => (medicationId ? db.medications.get(medicationId) : undefined),
     [medicationId]
   )
 
   // Fetch recent dose logs
   const doseLogs = useLiveQuery(
     () =>
-      db.doseLogs
-        .where('medicationId')
-        .equals(medicationId)
-        .reverse()
-        .limit(10)
-        .toArray(),
+      medicationId
+        ? db.doseLogs
+            .where('medicationId')
+            .equals(medicationId)
+            .reverse()
+            .limit(10)
+            .toArray()
+        : [],
     [medicationId]
   )
 
@@ -58,6 +82,15 @@ export default function MedicationDetailPage({ params }: { params: Promise<{ id:
     }
   }, [medication, currentWorkspace.id])
 
+  const handleDeleteDose = async (dose: LocalDoseLog) => {
+    try {
+      await undoDose(dose)
+      showToast('Dose removed', 'success')
+    } catch {
+      showToast('Failed to remove dose', 'error')
+    }
+  }
+
   const handleDelete = async () => {
     if (!medication) return
     setDeleting(true)
@@ -79,25 +112,27 @@ export default function MedicationDetailPage({ params }: { params: Promise<{ id:
   }
 
   const formatSchedule = () => {
-    if (!medication) return ''
+    if (!medication || !medication.scheduleData) return ''
     const data = medication.scheduleData as Record<string, unknown>
     switch (medication.scheduleType) {
       case 'FIXED_TIMES':
-        return `Daily at ${(data.times as string[]).join(', ')}`
+        return `Daily at ${(Array.isArray(data.times) ? data.times : []).join(', ')}`
       case 'INTERVAL':
-        return `Every ${data.hours} hours (starting ${data.startTime})`
+        return `Every ${data.hours || '?'} hours (starting ${data.startTime || '?'})`
       case 'WEEKDAYS':
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-        const selectedDays = (data.days as number[]).map(d => days[d]).join(', ')
-        return `${selectedDays} at ${data.time}`
+        const selectedDays = (Array.isArray(data.days) ? data.days : [])
+          .map((d: number) => days[d])
+          .join(', ')
+        return `${selectedDays} at ${data.time || '?'}`
       case 'PRN':
-        return `As needed (min ${data.minHoursBetween}h between doses)`
+        return `As needed (min ${data.minHoursBetween || '?'}h between doses)`
       default:
         return medication.scheduleType
     }
   }
 
-  if (!medication) {
+  if (!medicationId || !medication) {
     return (
       <>
         <Header title="Medication" showBack />
@@ -193,7 +228,7 @@ export default function MedicationDetailPage({ params }: { params: Promise<{ id:
             <Card padding="none">
               <ul className="divide-y divide-border">
                 {recentDoses.map((dose) => (
-                  <li key={dose.id} className="px-4 py-3 flex items-center justify-between">
+                  <li key={dose.id} className="px-4 py-3 flex items-center justify-between group">
                     <div>
                       <p className="text-sm font-medium text-secondary-900">
                         {format(new Date(dose.takenAt), 'EEEE, MMM d')}
@@ -203,6 +238,15 @@ export default function MedicationDetailPage({ params }: { params: Promise<{ id:
                         {dose.loggedBy && ` by ${dose.loggedBy.name}`}
                       </p>
                     </div>
+                    {currentWorkspace.role !== 'VIEWER' && (
+                      <button
+                        onClick={() => handleDeleteDose(dose)}
+                        className="p-2 text-secondary-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        title="Remove dose"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
