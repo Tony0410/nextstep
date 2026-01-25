@@ -18,7 +18,7 @@ services:
       # Push notification VAPID keys
       - NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEFs_VtoxY7SpNnd-ubz1ioliESlRI4sY6ny7Qp3rm7V1cm0gqyZX8TAHp4AaQ81yKC4LfWtJFQz_aHc25G-Tww
       - VAPID_PRIVATE_KEY=KgVQVO7XhfCklrJ3o9wowzK90AxI6Exg9pXPq76Qx4A
-      - VAPID_EMAIL=mailto:admin@nextstep.local
+      - VAPID_EMAIL=mailto:admin@example.com
     depends_on:
       db:
         condition: service_healthy

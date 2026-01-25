@@ -52,6 +52,18 @@ export function NotificationPermission({ workspaceId }: NotificationPermissionPr
         if (registration.pushManager) {
           const subscription = await registration.pushManager.getSubscription()
           setIsSubscribed(!!subscription)
+
+          // Auto-sync subscription to server to ensure it exists
+          if (subscription) {
+            fetch('/api/notifications/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                subscription: subscription.toJSON(),
+                workspaceId,
+              }),
+            }).catch(console.error)
+          }
         }
       } catch (err) {
         console.error('Failed to check subscription:', err)

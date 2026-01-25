@@ -33,6 +33,8 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TZ=Australia/Perth
