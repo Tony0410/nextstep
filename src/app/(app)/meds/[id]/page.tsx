@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Pill, Clock, Trash2, History, X } from 'lucide-react'
+import { Pill, Clock, Trash2, History, X, Edit2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
@@ -153,9 +153,9 @@ export default function MedicationDetailPage({ params }: { params: { id: string 
         rightAction={
           currentWorkspace.role !== 'VIEWER'
             ? {
-                icon: <Trash2 className="w-6 h-6 text-red-600" />,
-                label: 'Delete',
-                onClick: () => setShowDeleteModal(true),
+                icon: <Edit2 className="w-5 h-5 text-primary-600" />,
+                label: 'Edit',
+                onClick: () => router.push(`/meds/${medication.id}/edit`),
               }
             : undefined
         }
@@ -257,6 +257,20 @@ export default function MedicationDetailPage({ params }: { params: { id: string 
             </Card>
           )}
         </section>
+
+        {/* Delete Action */}
+        {currentWorkspace.role !== 'VIEWER' && (
+          <div className="pt-4 pb-8">
+            <Button
+              variant="ghost"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Medication
+            </Button>
+          </div>
+        )}
       </PageContainer>
 
       {/* Delete Confirmation Modal */}
