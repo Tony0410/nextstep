@@ -1,18 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Edit2 } from 'lucide-react'
+import { ArrowLeft, Edit2, Heart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '@/lib/sync'
 import { EmergencyCard } from '@/components/emergency/EmergencyCard'
-import { Button, LoadingState } from '@/components/ui'
+import { LoadingState } from '@/components/ui'
 import { useApp } from '../provider'
 
 export default function EmergencyPage() {
   const router = useRouter()
   const { currentWorkspace } = useApp()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Fetch workspace from IndexedDB for offline access
   const workspace = useLiveQuery(
@@ -32,7 +37,11 @@ export default function EmergencyPage() {
   )
 
   if (!workspace) {
-    return <LoadingState message="Loading emergency info..." />
+    return (
+      <div className="min-h-screen paper-texture flex items-center justify-center">
+        <LoadingState message="Loading emergency info..." />
+      </div>
+    )
   }
 
   const emergencyInfo = {
@@ -56,58 +65,74 @@ export default function EmergencyPage() {
   })) || []
 
   return (
-    <div className="min-h-screen bg-red-50">
+    <div className={`min-h-screen paper-texture transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
       {/* Header */}
-      <div className="bg-red-600 text-white safe-top">
-        <div className="flex items-center justify-between px-4 py-3">
+      <div className="bg-gradient-to-r from-alert-500 to-alert-600 text-white safe-area-top sticky top-0 z-10">
+        <div className="flex items-center justify-between px-6 py-4">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-white/90 hover:text-white"
+            className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back</span>
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+              <ArrowLeft className="w-5 h-5" />
+            </div>
+            <span className="font-medium">Back</span>
           </button>
+          
           {currentWorkspace.role !== 'VIEWER' && (
             <button
               onClick={() => router.push('/settings/emergency')}
-              className="flex items-center gap-2 text-white/90 hover:text-white"
+              className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
             >
-              <Edit2 className="w-4 h-4" />
-              <span>Edit</span>
+              <span className="font-medium">Edit</span>
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                <Edit2 className="w-5 h-5" />
+              </div>
             </button>
           )}
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-6 pb-24">
         {hasInfo ? (
-          <EmergencyCard info={emergencyInfo} medications={medsList} />
+          <div className="animate-fade-up">
+            <EmergencyCard info={emergencyInfo} medications={medsList} />
+          </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-              <Edit2 className="w-8 h-8 text-red-400" />
+          <div className="section-warm text-center py-12 animate-fade-up">
+            <div className="w-20 h-20 rounded-full bg-alert-100 flex items-center justify-center mx-auto mb-6">
+              <Heart className="w-10 h-10 text-alert-400" />
             </div>
-            <h2 className="text-lg font-semibold text-secondary-900 mb-2">
+            
+            <h2 className="font-display text-2xl text-secondary-900 mb-3">
               No Emergency Info Set
             </h2>
-            <p className="text-secondary-600 mb-4">
-              Add important medical information for emergencies.
+            
+            <p className="text-secondary-600 mb-8 max-w-sm mx-auto">
+              Add important medical information that could be crucial in an emergency situation.
             </p>
+            
             {currentWorkspace.role !== 'VIEWER' && (
-              <Button onClick={() => router.push('/settings/emergency')}>
+              <button
+                onClick={() => router.push('/settings/emergency')}
+                className="btn-primary"
+              >
                 Add Emergency Info
-              </Button>
+              </button>
             )}
           </div>
         )}
       </div>
 
       {/* Offline indicator */}
-      <div className="fixed bottom-4 left-4 right-4">
-        <div className="bg-green-100 border border-green-300 rounded-lg p-3 text-center">
-          <p className="text-sm text-green-800 font-medium">
-            This information is available offline
-          </p>
+      <div className="fixed bottom-6 left-6 right-6">
+        <div className="bg-primary-50 border border-primary-200 rounded-card p-4 text-center shadow-elevated">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+            <p className="text-sm text-primary-700 font-medium">
+              This information is available offline
+            </p>
+          </div>
         </div>
       </div>
     </div>

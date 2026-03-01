@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, Shield, ArrowRight } from 'lucide-react'
-import { Button, Input, Card, showToast } from '@/components/ui'
+import { Heart, Shield, ArrowRight, Sparkles, Users, Bell } from 'lucide-react'
+import { Button, Input, showToast } from '@/components/ui'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -12,6 +12,11 @@ export default function OnboardingPage() {
   const [clinicPhone, setClinicPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleAcceptDisclaimer = () => {
     setStep('workspace')
@@ -45,7 +50,7 @@ export default function OnboardingPage() {
         })
       }
 
-      showToast('All set! Welcome to Next Step.', 'success')
+      showToast('Welcome to Next Step', 'success')
       router.push('/today')
       router.refresh()
     } catch (err) {
@@ -57,101 +62,176 @@ export default function OnboardingPage() {
 
   if (step === 'disclaimer') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen paper-texture flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-8 h-8 text-amber-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-secondary-900">Important Notice</h1>
+          {/* Decorative blobs */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none">
+            <div className="blob blob-primary w-96 h-96 -top-48 -right-48" />
+            <div className="blob blob-accent w-80 h-80 bottom-20 -left-40" />
+            <div className="blob blob-cream w-64 h-64 top-1/2 right-1/4" />
           </div>
 
-          <Card className="mb-6">
-            <div className="space-y-4 text-secondary-700">
-              <p>
-                <strong>Next Step is a tracking tool only.</strong> It helps you and your family
-                stay organized with appointments and medications.
+          <div className={`relative transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            {/* Logo/Icon */}
+            <div className="text-center mb-8">
+              <div className="w-24 h-24 rounded-card-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-6 shadow-elevated">
+                <Heart className="w-12 h-12 text-white" />
+              </div>
+              
+              <h1 className="font-display text-display-md text-secondary-900 mb-2">
+                Next Step
+              </h1>
+              <p className="text-secondary-500 text-lg">
+                Supporting you through every step
               </p>
+            </div>
 
-              <p>
-                <strong className="text-red-600">This app does not provide medical advice.</strong>{' '}
-                Always consult your healthcare team for medical decisions.
-              </p>
+            {/* Disclaimer Card */}
+            <div className="section-warm mb-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-full bg-accent-100 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-accent-600" />
+                </div>
+                <h2 className="font-display text-xl text-secondary-900">Important Notice</h2>
+              </div>
 
-              <p>
-                <strong>For emergencies:</strong> Call 000 (Australia) or your local emergency
-                services immediately.
-              </p>
+              <div className="space-y-4 text-secondary-700">
+                <div className="flex gap-3">
+                  <Sparkles className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
+                  <p>
+                    <strong className="text-secondary-900">Next Step is a tracking tool only.</strong>{' '}
+                    It helps you and your family stay organized with appointments and medications.
+                  </p>
+                </div>
 
-              <p>
-                If you have questions about your treatment, contact your clinic directly using the
-                button we'll help you set up.
-              </p>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-alert-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-alert-600 text-xs font-bold">!</span>
+                  </div>
+                  <p>
+                    <strong className="text-alert-600">This app does not provide medical advice.</strong>{' '}
+                    Always consult your healthcare team for medical decisions.
+                  </p>
+                </div>
 
-              <div className="pt-4 border-t border-border">
-                <p className="text-sm text-secondary-500">
-                  By continuing, you acknowledge that Next Step is for tracking purposes only and
-                  does not replace professional medical advice.
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-alert-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">000</span>
+                  </div>
+                  <p>
+                    <strong>For emergencies:</strong> Call 000 (Australia) or your local emergency services immediately.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Users className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
+                  <p>
+                    Have questions about your treatment? Contact your clinic directly using the button we'll help you set up.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-cream-200">
+                <p className="text-sm text-secondary-500 text-center">
+                  By continuing, you acknowledge that Next Step is for tracking purposes only and does not replace professional medical advice.
                 </p>
               </div>
             </div>
-          </Card>
 
-          <Button onClick={handleAcceptDisclaimer} fullWidth>
-            I Understand
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
+            <button
+              onClick={handleAcceptDisclaimer}
+              className="btn-primary w-full flex items-center justify-center gap-2 text-lg py-4"
+            >
+              I Understand
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Heart className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-secondary-900">Set Up Your Plan</h1>
-          <p className="text-secondary-500 mt-1">Create a workspace to get started</p>
+    <div className="min-h-screen paper-texture flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* Decorative blobs */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="blob blob-primary w-80 h-80 -top-32 right-0" />
+          <div className="blob blob-cream w-64 h-64 bottom-0 left-0" />
         </div>
 
-        <Card className="mb-6">
-          <form onSubmit={handleCreateWorkspace} className="space-y-4">
-            <Input
-              label="Workspace Name"
-              type="text"
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              placeholder="e.g., Grace's Plan"
-              helperText="This is how family members will identify this workspace"
-              required
-            />
-            <Input
-              label="Clinic Phone Number"
-              type="tel"
-              value={clinicPhone}
-              onChange={(e) => setClinicPhone(e.target.value)}
-              placeholder="e.g., 08 9400 1234"
-              helperText="We'll add a 'Call Clinic' button for quick access"
-            />
+        <div className={`relative transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-card-lg bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center mx-auto mb-6 shadow-elevated">
+              <Sparkles className="w-10 h-10 text-white" />
+            </div>
+            
+            <h1 className="font-display text-display-sm text-secondary-900 mb-2">
+              Set Up Your Plan
+            </h1>
+            <p className="text-secondary-500 text-lg">Create a workspace to get started</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleCreateWorkspace} className="section-warm space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
+                Workspace Name
+                <span className="text-alert-500 ml-1">*</span>
+              </label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder="e.g., Grace's Plan"
+                className="input-sanctuary w-full"
+                required
+              />
+              <p className="text-xs text-secondary-400 mt-2">
+                This is how family members will identify this workspace
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
+                Clinic Phone Number
+                <span className="text-secondary-400 font-normal ml-1">(optional)</span>
+              </label>
+              <div className="relative">
+                <Bell className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
+                <input
+                  type="tel"
+                  value={clinicPhone}
+                  onChange={(e) => setClinicPhone(e.target.value)}
+                  placeholder="e.g., 08 9400 1234"
+                  className="input-sanctuary w-full pl-10"
+                />
+              </div>
+              <p className="text-xs text-secondary-400 mt-2">
+                We'll add a quick "Call Clinic" button for easy access
+              </p>
+            </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-button">
-                {error}
-              </p>
+              <div className="bg-alert-50 border border-alert-200 rounded-card p-4">
+                <p className="text-sm text-alert-700">{error}</p>
+              </div>
             )}
 
-            <Button type="submit" fullWidth loading={loading}>
-              Create Workspace
-            </Button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full text-lg py-4 disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create Workspace'}
+            </button>
           </form>
-        </Card>
 
-        <p className="text-center text-sm text-secondary-500">
-          You can add family members later from Settings
-        </p>
+          <p className="text-center text-sm text-secondary-400 mt-6">
+            You can add family members later from Settings
+          </p>
+        </div>
       </div>
     </div>
   )

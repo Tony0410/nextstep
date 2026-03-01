@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus, AlertTriangle, ClipboardCheck } from 'lucide-react'
+import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus, AlertTriangle, ClipboardCheck, Heart } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
@@ -23,6 +23,11 @@ export default function TodayPage() {
   const [now, setNow] = useState(() => new Date())
   const [quickNote, setQuickNote] = useState('')
   const [isAddingNote, setIsAddingNote] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Update time every minute
   useEffect(() => {
@@ -149,7 +154,14 @@ export default function TodayPage() {
     const date = toZonedTime(new Date(datetime), TIMEZONE)
     if (isToday(date)) return `Today at ${format(date, 'h:mm a')}`
     if (isTomorrow(date)) return `Tomorrow at ${format(date, 'h:mm a')}`
-    return format(date, 'EEE, MMM d \'at\' h:mm a')
+    return format(date, "EEE, MMM d 'at' h:mm a")
+  }
+
+  const getGreeting = () => {
+    const hour = now.getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
   }
 
   if (!appointments || !medications) {
@@ -166,27 +178,41 @@ export default function TodayPage() {
   return (
     <>
       <Header title="Today" />
-      <PageContainer className="pt-4 space-y-6">
-        {/* Greeting */}
-        <div className="mb-2">
-          <p className="text-secondary-500 text-sm">
-            {format(toZonedTime(now, TIMEZONE), 'EEEE, MMMM d')}
-          </p>
+      <PageContainer className="pt-6 pb-24 space-y-8">
+        {/* Greeting Section with decorative elements */}
+        <div className={`relative transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Decorative blob */}
+          <div className="blob blob-primary w-32 h-32 -top-4 -left-4" />
+          
+          <div className="relative">
+            <p className="text-secondary-500 text-sm font-medium tracking-wide uppercase mb-1">
+              {format(toZonedTime(now, TIMEZONE), 'EEEE, MMMM d')}
+            </p>
+            <h1 className="font-display text-display-sm text-secondary-900">
+              {getGreeting()}
+            </h1>
+            <p className="text-secondary-600 mt-2 flex items-center gap-2">
+              <Heart className="w-4 h-4 text-accent-500" />
+              <span>Take it one step at a time</span>
+            </p>
+          </div>
         </div>
 
-        {/* Emergency & Call Clinic Buttons */}
-        <div className="flex gap-3">
+        {/* Emergency & Call Clinic Buttons - Floating cards */}
+        <div className={`flex gap-3 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {/* Emergency Info Button */}
           <button
             onClick={() => router.push('/emergency')}
-            className="flex items-center gap-3 p-4 bg-red-50 rounded-card border border-red-200 hover:bg-red-100 transition-colors flex-1"
+            className="flex-1 group relative overflow-hidden"
           >
-            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-red-800">Emergency</p>
-              <p className="text-sm text-red-600">Medical info</p>
+            <div className="relative flex items-center gap-3 p-4 bg-alert-50/80 backdrop-blur-sm rounded-card border border-alert-200/60 hover:border-alert-300 hover:shadow-elevated transition-all duration-300">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-alert-500 to-alert-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-alert-800">Emergency</p>
+                <p className="text-sm text-alert-600">Medical info</p>
+              </div>
             </div>
           </button>
 
@@ -194,26 +220,28 @@ export default function TodayPage() {
           {currentWorkspace.clinicPhone && (
             <a
               href={`tel:${currentWorkspace.clinicPhone}`}
-              className="flex items-center gap-3 p-4 bg-primary-50 rounded-card border border-primary-100 hover:bg-primary-100 transition-colors flex-1"
+              className="flex-1 group"
             >
-              <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-primary-800">Call Clinic</p>
-                <p className="text-sm text-primary-600 truncate">{currentWorkspace.clinicPhone}</p>
+              <div className="flex items-center gap-3 p-4 bg-primary-50/80 backdrop-blur-sm rounded-card border border-primary-200/60 hover:border-primary-300 hover:shadow-elevated transition-all duration-300">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+                  <Phone className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-primary-800">Call Clinic</p>
+                  <p className="text-sm text-primary-600 truncate max-w-[100px]">{currentWorkspace.clinicPhone}</p>
+                </div>
               </div>
             </a>
           )}
         </div>
 
-        {/* Next Appointment */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-secondary-900">Next Appointment</h2>
+        {/* Next Appointment - Hero Card */}
+        <section className={`transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl text-secondary-900">Next Appointment</h2>
             <button
               onClick={() => router.push('/appointments')}
-              className="text-sm text-primary-600 font-medium flex items-center"
+              className="text-sm text-primary-600 font-medium flex items-center gap-0.5 hover:text-primary-700 transition-colors"
             >
               View all
               <ChevronRight className="w-4 h-4" />
@@ -221,30 +249,30 @@ export default function TodayPage() {
           </div>
 
           {nextAppointment ? (
-            <Card
-              className="card-appointment"
+            <div
+              className="card-appointment cursor-pointer group"
               onClick={() => router.push(`/appointments/${nextAppointment.id}`)}
             >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-5 h-5 text-primary-600" />
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center flex-shrink-0 shadow-inner">
+                  <Calendar className="w-7 h-7 text-primary-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-secondary-900 truncate">
+                  <h3 className="font-display text-lg text-secondary-900 truncate group-hover:text-primary-700 transition-colors">
                     {nextAppointment.title}
                   </h3>
-                  <p className="text-sm text-secondary-600 flex items-center gap-1 mt-1">
-                    <Clock className="w-4 h-4" />
+                  <p className="text-sm text-secondary-600 flex items-center gap-1.5 mt-1.5">
+                    <Clock className="w-4 h-4 text-primary-500" />
                     {formatAppointmentDate(nextAppointment.datetime)}
                   </p>
                   {nextAppointment.location && (
-                    <p className="text-sm text-secondary-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-4 h-4" />
+                    <p className="text-sm text-secondary-500 flex items-center gap-1.5 mt-1">
+                      <MapPin className="w-4 h-4 text-cream-600" />
                       <span className="truncate">{nextAppointment.location}</span>
                     </p>
                   )}
                 </div>
-                <ChevronRight className="w-5 h-5 text-secondary-400" />
+                <ChevronRight className="w-5 h-5 text-secondary-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
               </div>
               {nextAppointment.mapUrl && (
                 <a
@@ -252,27 +280,27 @@ export default function TodayPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary-600 font-medium hover:text-primary-700"
+                  className="inline-flex items-center gap-1.5 mt-4 text-sm text-primary-600 font-medium hover:text-primary-700 hover:underline"
                 >
                   <MapPin className="w-4 h-4" />
                   Open in Maps
                 </a>
               )}
-            </Card>
+            </div>
           ) : (
-            <Card variant="outline" className="text-center py-6">
-              <Calendar className="w-8 h-8 text-secondary-300 mx-auto mb-2" />
-              <p className="text-secondary-500">No upcoming appointments</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
+            <div className="section-warm text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-cream-100 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-cream-600" />
+              </div>
+              <p className="text-secondary-600 font-medium">No upcoming appointments</p>
+              <button
                 onClick={() => router.push('/appointments/new')}
+                className="mt-4 inline-flex items-center gap-2 text-primary-600 font-medium hover:text-primary-700"
               >
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4" />
                 Add one
-              </Button>
-            </Card>
+              </button>
+            </div>
           )}
         </section>
 
@@ -283,26 +311,26 @@ export default function TodayPage() {
           )
           if (tomorrowAppt) {
             return (
-              <section>
-                <Card
-                  className="bg-green-50 border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+              <section className={`transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div
+                  className="bg-gradient-to-r from-cream-100 to-cream-50 border border-cream-200 rounded-card p-5 cursor-pointer hover:shadow-elevated transition-all duration-300 group"
                   onClick={() => router.push(`/appointments/${tomorrowAppt.id}/prep`)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                      <ClipboardCheck className="w-5 h-5 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                      <ClipboardCheck className="w-7 h-7 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-green-800">
+                      <p className="font-display text-lg text-secondary-900">
                         Prepare for tomorrow
                       </p>
-                      <p className="text-sm text-green-600">
+                      <p className="text-sm text-secondary-600">
                         {tomorrowAppt.title} at {format(toZonedTime(new Date(tomorrowAppt.datetime), TIMEZONE), 'h:mm a')}
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-green-500" />
+                    <ChevronRight className="w-5 h-5 text-accent-500 group-hover:translate-x-1 transition-transform" />
                   </div>
-                </Card>
+                </div>
               </section>
             )
           }
@@ -311,23 +339,25 @@ export default function TodayPage() {
 
         {/* Refill Alerts */}
         {medications && medications.length > 0 && (
-          <RefillAlert
-            medications={medications.map(m => ({
-              id: m.id,
-              name: m.name,
-              pillCount: m.pillCount,
-              refillThreshold: m.refillThreshold,
-            }))}
-          />
+          <div className={`transition-all duration-700 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <RefillAlert
+              medications={medications.map(m => ({
+                id: m.id,
+                name: m.name,
+                pillCount: m.pillCount,
+                refillThreshold: m.refillThreshold,
+              }))}
+            />
+          </div>
         )}
 
         {/* Meds Due */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-secondary-900">Medications</h2>
+        <section className={`transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl text-secondary-900">Medications</h2>
             <button
               onClick={() => router.push('/meds')}
-              className="text-sm text-primary-600 font-medium flex items-center"
+              className="text-sm text-primary-600 font-medium flex items-center gap-0.5 hover:text-primary-700 transition-colors"
             >
               View all
               <ChevronRight className="w-4 h-4" />
@@ -335,21 +365,25 @@ export default function TodayPage() {
           </div>
 
           {medsDueSoon.length > 0 ? (
-            <div className="space-y-3">
-              {medsDueSoon.map((status) => (
+            <div className="space-y-4">
+              {medsDueSoon.map((status, index) => (
                 <MedicationCard
                   key={status.medication.id}
                   status={status}
                   now={now}
                   onTake={() => handleTakeMed(status)}
+                  index={index}
                 />
               ))}
             </div>
           ) : medications.length > 0 ? (
-            <Card variant="outline" className="text-center py-6">
-              <Pill className="w-8 h-8 text-secondary-300 mx-auto mb-2" />
-              <p className="text-secondary-500">All caught up! No meds due soon.</p>
-            </Card>
+            <div className="section-warm text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mx-auto mb-4">
+                <Pill className="w-8 h-8 text-primary-400" />
+              </div>
+              <p className="text-secondary-600 font-medium">All caught up!</p>
+              <p className="text-sm text-secondary-400 mt-1">No medications due soon</p>
+            </div>
           ) : (
             <EmptyState
               type="medications"
@@ -364,16 +398,16 @@ export default function TodayPage() {
         </section>
 
         {/* Quick Note */}
-        <section>
-          <h2 className="text-lg font-semibold text-secondary-900 mb-3">Quick Note</h2>
-          <Card padding="sm">
-            <div className="flex gap-2">
+        <section className={`transition-all duration-700 delay-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h2 className="font-display text-xl text-secondary-900 mb-4">Quick Note</h2>
+          <div className="section-warm">
+            <div className="flex gap-3">
               <input
                 type="text"
                 value={quickNote}
                 onChange={(e) => setQuickNote(e.target.value)}
                 placeholder="Jot down a thought..."
-                className="flex-1 px-3 py-2.5 border border-border rounded-button text-base focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500"
+                className="input-sanctuary flex-1"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && quickNote.trim()) {
                     handleAddQuickNote()
@@ -384,11 +418,12 @@ export default function TodayPage() {
                 onClick={handleAddQuickNote}
                 disabled={!quickNote.trim() || isAddingNote}
                 loading={isAddingNote}
+                className="btn-primary whitespace-nowrap"
               >
                 Add
               </Button>
             </div>
-          </Card>
+          </div>
         </section>
       </PageContainer>
     </>
@@ -399,9 +434,10 @@ interface MedicationCardProps {
   status: MedicationDueStatus
   now: Date
   onTake: () => void
+  index: number
 }
 
-function MedicationCard({ status, now, onTake }: MedicationCardProps) {
+function MedicationCard({ status, now, onTake, index }: MedicationCardProps) {
   const { medication, isOverdue, isPRN, prnAvailable, prnAvailableAt, nextDueAt } = status
 
   const getTimeLabel = () => {
@@ -426,35 +462,38 @@ function MedicationCard({ status, now, onTake }: MedicationCardProps) {
   const canTake = !isPRN || prnAvailable
 
   return (
-    <Card className={isOverdue ? 'overdue' : ''}>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-          <Pill className="w-5 h-5 text-primary-600" />
+    <div className={`card-medication ${isOverdue ? 'overdue' : ''} animate-fade-up`} style={{ animationDelay: `${index * 0.1}s` }}>
+      <div className="flex items-center gap-4">
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner transition-all duration-300 ${
+          isOverdue 
+            ? 'bg-gradient-to-br from-accent-100 to-accent-200' 
+            : 'bg-gradient-to-br from-primary-100 to-primary-200'
+        }`}>
+          <Pill className={`w-7 h-7 ${isOverdue ? 'text-accent-600' : 'text-primary-600'}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-secondary-900">{medication.name}</h3>
-          <p className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-secondary-500'}`}>
+          <h3 className="font-display text-lg text-secondary-900">{medication.name}</h3>
+          <p className={`text-sm ${isOverdue ? 'text-accent-600 font-medium' : 'text-secondary-500'}`}>
             {getTimeLabel()}
             {isPRN && ' • As needed'}
           </p>
         </div>
-        <Button
+        <button
           onClick={(e) => {
             e.stopPropagation()
             onTake()
           }}
-          variant="success"
-          size="md"
           disabled={!canTake}
+          className={`btn-primary text-sm px-5 py-2.5 ${!canTake ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           Taken
-        </Button>
+        </button>
       </div>
       {medication.instructions && (
-        <p className="text-sm text-secondary-500 mt-2 ml-13">
+        <p className="text-sm text-secondary-500 mt-3 ml-[72px]">
           {medication.instructions}
         </p>
       )}
-    </Card>
+    </div>
   )
 }
