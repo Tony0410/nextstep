@@ -36,6 +36,21 @@ model User {
   symptoms            Symptom[]
   pushSubscriptions   PushSubscription[]
 
+  // New feature relations
+  temperatureLogs       TemperatureLog[]  @relation("TempLogCreatedBy")
+  createdContacts       Contact[]         @relation("ContactCreatedBy")
+  updatedContacts       Contact[]         @relation("ContactUpdatedBy")
+  weightLogs            WeightLog[]       @relation("WeightLogCreatedBy")
+  createdMilestones     TreatmentMilestone[] @relation("MilestoneCreatedBy")
+  updatedMilestones     TreatmentMilestone[] @relation("MilestoneUpdatedBy")
+  createdTasks          CaregiverTask[]   @relation("TaskCreatedBy")
+  updatedTasks          CaregiverTask[]   @relation("TaskUpdatedBy")
+  assignedTasks         CaregiverTask[]   @relation("TaskAssignedTo")
+  completedTasks        CaregiverTask[]   @relation("TaskCompletedBy")
+  createdLabResults     LabResult[]       @relation("LabResultCreatedBy")
+  updatedLabResults     LabResult[]       @relation("LabResultUpdatedBy")
+  createdDocuments      MedicalDocument[] @relation("DocCreatedBy")
+
   @@index([email])
 }
 
@@ -103,6 +118,16 @@ model Workspace {
   symptoms               Symptom[]
   appointmentChecklists  AppointmentChecklist[]
   pushSubscriptions      PushSubscription[]
+
+  // New feature relations
+  temperatureLogs       TemperatureLog[]
+  contacts              Contact[]
+  weightLogs            WeightLog[]
+  milestones            TreatmentMilestone[]
+  caregiverTasks        CaregiverTask[]
+  labResults            LabResult[]
+  medicalDocuments      MedicalDocument[]
+  drugInteractions      DrugInteraction[]
 
   @@index([name])
 }
@@ -220,6 +245,10 @@ model Medication {
   createdBy User      @relation("MedicationCreatedBy", fields: [createdById], references: [id])
   updatedBy User      @relation("MedicationUpdatedBy", fields: [updatedById], references: [id])
   doseLogs  DoseLog[]
+
+  // Drug interaction relations
+  interactions1 DrugInteraction[] @relation("Interaction1")
+  interactions2 DrugInteraction[] @relation("Interaction2")
 
   @@index([workspaceId, active])
   @@index([workspaceId, deletedAt])
@@ -409,4 +438,280 @@ model SyncCursor {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId])
+}
+
+// ============================================
+// TEMPERATURE LOG
+// ============================================
+
+model TemperatureLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  recordedAt  DateTime  @default(now())
+  tempCelsius Float
+  method      String?   // "oral", "forehead", "ear", "armpit"
+  notes       String?
+  createdById String
+  deletedAt   DateTime?
+
+  // Sync
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("TempLogCreatedBy", fields: [createdById], references: [id])
+
+  @@index([workspaceId, recordedAt])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// CONTACT DIRECTORY
+// ============================================
+
+model Contact {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  role        String    // "Oncologist", "Pharmacist", etc.
+  category    String    // "ONCOLOGY", "HOSPITAL", "PHARMACY", "INSURANCE", "FAMILY", "OTHER"
+  phone       String
+  phone2      String?
+  email       String?
+  address     String?
+  hours       String?   // "Mon-Fri 8am-5pm"
+  notes       String?
+  isEmergency Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+  updatedById String
+
+  // Sync
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId, category])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// WEIGHT LOG
+// ============================================
+
+model WeightLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  recordedAt  DateTime  @default(now())
+  weightKg    Float
+  notes       String?
+  createdById String
+  deletedAt   DateTime?
+
+  // Sync
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("WeightLogCreatedBy", fields: [createdById], references: [id])
+
+  @@index([workspaceId, recordedAt])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// TREATMENT TIMELINE
+// ============================================
+
+enum MilestoneStatus {
+  SCHEDULED
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+model TreatmentMilestone {
+  id          String          @id @default(cuid())
+  workspaceId String
+  type        String          // "CHEMO_CYCLE", "SURGERY", "RADIATION", "SCAN", "CONSULTATION", "OTHER"
+  title       String
+  description String?
+  plannedDate DateTime
+  actualDate  DateTime?
+  status      MilestoneStatus @default(SCHEDULED)
+  sortOrder   Int             @default(0)
+  notes       String?
+  deletedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdById String
+  updatedById String
+
+  // Sync
+  version     Int             @default(1)
+  syncedAt    DateTime        @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("MilestoneCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("MilestoneUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId, plannedDate])
+  @@index([workspaceId, status])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// CAREGIVER TASKS
+// ============================================
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  URGENT
+  HIGH
+  NORMAL
+  LOW
+}
+
+model CaregiverTask {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  title         String
+  description   String?
+  category      String       // "MEDICAL", "ERRANDS", "MEALS", "EMOTIONAL", "OTHER"
+  priority      TaskPriority @default(NORMAL)
+  status        TaskStatus   @default(TODO)
+  assignedToId  String?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  completedById String?
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  createdById   String
+  updatedById   String
+
+  // Sync
+  version       Int          @default(1)
+  syncedAt      DateTime     @default(now())
+
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User      @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
+  assignedTo  User?     @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  completedBy User?     @relation("TaskCompletedBy", fields: [completedById], references: [id])
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, assignedToId])
+  @@index([workspaceId, dueDate])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// LAB RESULTS
+// ============================================
+
+model LabResult {
+  id          String    @id @default(cuid())
+  workspaceId String
+  testDate    DateTime
+  panelName   String    // "Complete Blood Count", "Comprehensive Metabolic", etc.
+  labName     String?   // "Quest", "Hospital Lab"
+  results     Json      // Array of { marker, value, unit, refMin, refMax, flag }
+  notes       String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+  updatedById String
+
+  // Sync
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("LabResultCreatedBy", fields: [createdById], references: [id])
+  updatedBy User      @relation("LabResultUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId, testDate])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// MEDICAL DOCUMENTS
+// ============================================
+
+model MedicalDocument {
+  id          String    @id @default(cuid())
+  workspaceId String
+  title       String
+  category    String    // "LAB_REPORT", "SCAN", "INSURANCE", "ID_CARD", "PRESCRIPTION", "OTHER"
+  fileName    String
+  fileSize    Int       // bytes
+  mimeType    String    // "application/pdf", "image/jpeg"
+  fileData    Bytes     // Store in DB as bytes (self-hosted, no S3)
+  dateTaken   DateTime?
+  expiryDate  DateTime?
+  notes       String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+
+  // Sync (no offline sync for file blobs — too large)
+  version     Int       @default(1)
+  syncedAt    DateTime  @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("DocCreatedBy", fields: [createdById], references: [id])
+
+  @@index([workspaceId, category])
+  @@index([workspaceId, deletedAt])
+  @@index([syncedAt])
+}
+
+// ============================================
+// DRUG INTERACTIONS (cached lookups)
+// ============================================
+
+model DrugInteraction {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  medication1Id String
+  medication2Id String
+  severity      String   // "MINOR", "MODERATE", "MAJOR", "CONTRAINDICATED"
+  description   String
+  checkedAt     DateTime @default(now())
+
+  // Relations
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  medication1 Medication @relation("Interaction1", fields: [medication1Id], references: [id], onDelete: Cascade)
+  medication2 Medication @relation("Interaction2", fields: [medication2Id], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, medication1Id, medication2Id])
+  @@index([workspaceId])
 }

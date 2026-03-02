@@ -11,6 +11,7 @@ import type { Medication, DoseLog, MedicationDueStatus } from '@/lib/schedule'
 import { Card, Button, LoadingState, EmptyState, showUndoToast, showToast } from '@/components/ui'
 import { Header, PageContainer } from '@/components/layout/header'
 import { RefillAlert } from '@/components/medications/RefillAlert'
+import { InteractionCheck } from '@/components/medications/InteractionCheck'
 import { useApp } from '../provider'
 
 export default function MedsPage() {
@@ -139,6 +140,11 @@ export default function MedsPage() {
             refillThreshold: m.refillThreshold,
           }))}
         />
+
+        {/* Drug Interaction Checker */}
+        {medications.filter(m => m.active).length >= 2 && (
+          <InteractionCheck workspaceId={currentWorkspace.id} />
+        )}
 
         {medications.length === 0 ? (
           <EmptyState

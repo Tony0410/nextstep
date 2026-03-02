@@ -1,5 +1,8 @@
 import { db, generateTempId, type SyncOp } from './db'
-import type { LocalAppointment, LocalMedication, LocalNote, LocalDoseLog, LocalSymptom } from './db'
+import type {
+  LocalAppointment, LocalMedication, LocalNote, LocalDoseLog, LocalSymptom,
+  LocalTemperatureLog, LocalContact, LocalWeightLog, LocalMilestone, LocalCaregiverTask, LocalLabResult,
+} from './db'
 
 const SYNC_INTERVAL = 30000 // 30 seconds
 const MAX_RETRIES = 3
@@ -70,7 +73,7 @@ export async function pullChanges(workspaceId: string): Promise<boolean> {
     const data = await response.json()
 
     // Update local database
-    await db.transaction('rw', [db.appointments, db.medications, db.notes, db.doseLogs, db.symptoms, db.workspaces, db.syncMeta], async () => {
+    await db.transaction('rw', [db.appointments, db.medications, db.notes, db.doseLogs, db.symptoms, db.temperatureLogs, db.contacts, db.weightLogs, db.milestones, db.caregiverTasks, db.labResults, db.workspaces, db.syncMeta], async () => {
       // Update workspace (including emergency info fields)
       if (data.workspace) {
         await db.workspaces.put({
@@ -152,6 +155,54 @@ export async function pullChanges(workspaceId: string): Promise<boolean> {
         }
       }
 
+      // Update temperature logs
+      for (const temp of data.temperatureLogs || []) {
+        const existing = await db.temperatureLogs.get(temp.id)
+        if (!existing || new Date(temp.syncedAt) > new Date(existing.syncedAt)) {
+          await db.temperatureLogs.put({ ...temp, syncedAt: temp.syncedAt })
+        }
+      }
+
+      // Update contacts
+      for (const contact of data.contacts || []) {
+        const existing = await db.contacts.get(contact.id)
+        if (!existing || new Date(contact.syncedAt) > new Date(existing.syncedAt)) {
+          await db.contacts.put({ ...contact, syncedAt: contact.syncedAt })
+        }
+      }
+
+      // Update weight logs
+      for (const weight of data.weightLogs || []) {
+        const existing = await db.weightLogs.get(weight.id)
+        if (!existing || new Date(weight.syncedAt) > new Date(existing.syncedAt)) {
+          await db.weightLogs.put({ ...weight, syncedAt: weight.syncedAt })
+        }
+      }
+
+      // Update milestones
+      for (const milestone of data.milestones || []) {
+        const existing = await db.milestones.get(milestone.id)
+        if (!existing || new Date(milestone.syncedAt) > new Date(existing.syncedAt)) {
+          await db.milestones.put({ ...milestone, syncedAt: milestone.syncedAt })
+        }
+      }
+
+      // Update caregiver tasks
+      for (const task of data.caregiverTasks || []) {
+        const existing = await db.caregiverTasks.get(task.id)
+        if (!existing || new Date(task.syncedAt) > new Date(existing.syncedAt)) {
+          await db.caregiverTasks.put({ ...task, syncedAt: task.syncedAt })
+        }
+      }
+
+      // Update lab results
+      for (const lab of data.labResults || []) {
+        const existing = await db.labResults.get(lab.id)
+        if (!existing || new Date(lab.syncedAt) > new Date(existing.syncedAt)) {
+          await db.labResults.put({ ...lab, syncedAt: lab.syncedAt })
+        }
+      }
+
       // Update sync cursor
       await db.syncMeta.put({
         id: workspaceId,
@@ -181,7 +232,7 @@ export async function pushChanges(workspaceId: string): Promise<boolean> {
       method: 'POST',
       body: JSON.stringify({
         workspaceId,
-        ops: ops.map((op) => ({
+        ops: ops.map((op: SyncOp) => ({
           id: op.id,
           type: op.type,
           entityType: op.entityType,
@@ -199,30 +250,30 @@ export async function pushChanges(workspaceId: string): Promise<boolean> {
     const data = await response.json()
 
     // Process results and remove successful ops from outbox
-    await db.transaction('rw', [db.outbox, db.appointments, db.notes, db.symptoms], async () => {
+    await db.transaction('rw', [db.outbox, db.appointments, db.notes, db.symptoms, db.temperatureLogs, db.contacts, db.weightLogs, db.milestones, db.caregiverTasks, db.labResults], async () => {
       for (const result of data.results) {
         if (result.success) {
           // Find the op
-          const op = ops.find((o) => o.id === result.opId)
+          const op = ops.find((o: SyncOp) => o.id === result.opId)
           if (op && op.entityId?.startsWith('temp_') && result.entityId) {
             // Update local entity with real ID
-            if (op.entityType === 'APPOINTMENT') {
-              const local = await db.appointments.get(op.entityId)
+            const entityTableMap: Record<string, { get: (id: string) => Promise<any>, delete: (id: string) => Promise<void>, put: (item: any) => Promise<any> }> = {
+              APPOINTMENT: db.appointments as any,
+              NOTE: db.notes as any,
+              SYMPTOM: db.symptoms as any,
+              TEMPERATURE_LOG: db.temperatureLogs as any,
+              CONTACT: db.contacts as any,
+              WEIGHT_LOG: db.weightLogs as any,
+              MILESTONE: db.milestones as any,
+              CAREGIVER_TASK: db.caregiverTasks as any,
+              LAB_RESULT: db.labResults as any,
+            }
+            const table = entityTableMap[op.entityType]
+            if (table) {
+              const local = await table.get(op.entityId)
               if (local) {
-                await db.appointments.delete(op.entityId)
-                await db.appointments.put({ ...local, id: result.entityId })
-              }
-            } else if (op.entityType === 'NOTE') {
-              const local = await db.notes.get(op.entityId)
-              if (local) {
-                await db.notes.delete(op.entityId)
-                await db.notes.put({ ...local, id: result.entityId })
-              }
-            } else if (op.entityType === 'SYMPTOM') {
-              const local = await db.symptoms.get(op.entityId)
-              if (local) {
-                await db.symptoms.delete(op.entityId)
-                await db.symptoms.put({ ...local, id: result.entityId })
+                await table.delete(op.entityId)
+                await table.put({ ...(local as Record<string, unknown>), id: result.entityId })
               }
             }
           }
@@ -555,6 +606,349 @@ export async function deleteSymptom(symptom: LocalSymptom): Promise<void> {
     type: 'DELETE_SYMPTOM',
     entityType: 'SYMPTOM',
     entityId: symptom.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// TEMPERATURE LOG
+// ============================================
+
+export async function logTemperature(
+  workspaceId: string,
+  data: { tempCelsius: number; method?: string; notes?: string; recordedAt?: string }
+): Promise<LocalTemperatureLog> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const temp: LocalTemperatureLog = {
+    id,
+    workspaceId,
+    recordedAt: data.recordedAt || now,
+    tempCelsius: data.tempCelsius,
+    method: data.method || null,
+    notes: data.notes || null,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.temperatureLogs.add(temp)
+  await addToOutbox({
+    workspaceId,
+    type: 'LOG_TEMP',
+    entityType: 'TEMPERATURE_LOG',
+    entityId: id,
+    data: { tempCelsius: data.tempCelsius, method: data.method, notes: data.notes, recordedAt: temp.recordedAt },
+    timestamp: Date.now(),
+  })
+
+  return temp
+}
+
+export async function deleteTemperatureLog(temp: LocalTemperatureLog): Promise<void> {
+  const now = new Date().toISOString()
+  await db.temperatureLogs.update(temp.id, { deletedAt: now, version: temp.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: temp.workspaceId,
+    type: 'DELETE_TEMP',
+    entityType: 'TEMPERATURE_LOG',
+    entityId: temp.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// CONTACT
+// ============================================
+
+export async function createLocalContact(
+  workspaceId: string,
+  data: Omit<LocalContact, 'id' | 'workspaceId' | 'version' | 'syncedAt' | 'deletedAt'>
+): Promise<LocalContact> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const contact: LocalContact = {
+    ...data,
+    id,
+    workspaceId,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.contacts.add(contact)
+  await addToOutbox({
+    workspaceId,
+    type: 'CREATE_CONTACT',
+    entityType: 'CONTACT',
+    entityId: id,
+    data: {
+      name: data.name, role: data.role, category: data.category,
+      phone: data.phone, phone2: data.phone2, email: data.email,
+      address: data.address, hours: data.hours, notes: data.notes,
+      isEmergency: data.isEmergency, sortOrder: data.sortOrder,
+    },
+    timestamp: Date.now(),
+  })
+
+  return contact
+}
+
+export async function updateLocalContact(
+  contact: LocalContact,
+  updates: Partial<Pick<LocalContact, 'name' | 'role' | 'category' | 'phone' | 'phone2' | 'email' | 'address' | 'hours' | 'notes' | 'isEmergency' | 'sortOrder'>>
+): Promise<void> {
+  await db.contacts.update(contact.id, { ...updates, version: contact.version + 1, syncedAt: new Date().toISOString() })
+  await addToOutbox({
+    workspaceId: contact.workspaceId,
+    type: 'UPDATE_CONTACT',
+    entityType: 'CONTACT',
+    entityId: contact.id,
+    data: updates,
+    timestamp: Date.now(),
+  })
+}
+
+export async function deleteLocalContact(contact: LocalContact): Promise<void> {
+  const now = new Date().toISOString()
+  await db.contacts.update(contact.id, { deletedAt: now, version: contact.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: contact.workspaceId,
+    type: 'DELETE_CONTACT',
+    entityType: 'CONTACT',
+    entityId: contact.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// WEIGHT LOG
+// ============================================
+
+export async function logWeight(
+  workspaceId: string,
+  data: { weightKg: number; notes?: string; recordedAt?: string }
+): Promise<LocalWeightLog> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const weight: LocalWeightLog = {
+    id,
+    workspaceId,
+    recordedAt: data.recordedAt || now,
+    weightKg: data.weightKg,
+    notes: data.notes || null,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.weightLogs.add(weight)
+  await addToOutbox({
+    workspaceId,
+    type: 'LOG_WEIGHT',
+    entityType: 'WEIGHT_LOG',
+    entityId: id,
+    data: { weightKg: data.weightKg, notes: data.notes, recordedAt: weight.recordedAt },
+    timestamp: Date.now(),
+  })
+
+  return weight
+}
+
+export async function deleteWeightLog(weight: LocalWeightLog): Promise<void> {
+  const now = new Date().toISOString()
+  await db.weightLogs.update(weight.id, { deletedAt: now, version: weight.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: weight.workspaceId,
+    type: 'DELETE_WEIGHT',
+    entityType: 'WEIGHT_LOG',
+    entityId: weight.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// MILESTONE
+// ============================================
+
+export async function createLocalMilestone(
+  workspaceId: string,
+  data: Omit<LocalMilestone, 'id' | 'workspaceId' | 'version' | 'syncedAt' | 'deletedAt'>
+): Promise<LocalMilestone> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const milestone: LocalMilestone = {
+    ...data,
+    id,
+    workspaceId,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.milestones.add(milestone)
+  await addToOutbox({
+    workspaceId,
+    type: 'CREATE_MILESTONE',
+    entityType: 'MILESTONE',
+    entityId: id,
+    data: {
+      type: data.type, title: data.title, description: data.description,
+      plannedDate: data.plannedDate, actualDate: data.actualDate,
+      status: data.status, notes: data.notes,
+    },
+    timestamp: Date.now(),
+  })
+
+  return milestone
+}
+
+export async function updateLocalMilestone(
+  milestone: LocalMilestone,
+  updates: Partial<Pick<LocalMilestone, 'type' | 'title' | 'description' | 'plannedDate' | 'actualDate' | 'status' | 'notes'>>
+): Promise<void> {
+  await db.milestones.update(milestone.id, { ...updates, version: milestone.version + 1, syncedAt: new Date().toISOString() })
+  await addToOutbox({
+    workspaceId: milestone.workspaceId,
+    type: 'UPDATE_MILESTONE',
+    entityType: 'MILESTONE',
+    entityId: milestone.id,
+    data: updates,
+    timestamp: Date.now(),
+  })
+}
+
+export async function deleteLocalMilestone(milestone: LocalMilestone): Promise<void> {
+  const now = new Date().toISOString()
+  await db.milestones.update(milestone.id, { deletedAt: now, version: milestone.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: milestone.workspaceId,
+    type: 'DELETE_MILESTONE',
+    entityType: 'MILESTONE',
+    entityId: milestone.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// CAREGIVER TASK
+// ============================================
+
+export async function createLocalTask(
+  workspaceId: string,
+  data: Omit<LocalCaregiverTask, 'id' | 'workspaceId' | 'version' | 'syncedAt' | 'deletedAt' | 'completedAt'>
+): Promise<LocalCaregiverTask> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const task: LocalCaregiverTask = {
+    ...data,
+    id,
+    workspaceId,
+    completedAt: null,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.caregiverTasks.add(task)
+  await addToOutbox({
+    workspaceId,
+    type: 'CREATE_TASK',
+    entityType: 'CAREGIVER_TASK',
+    entityId: id,
+    data: {
+      title: data.title, description: data.description, category: data.category,
+      priority: data.priority, status: data.status, assignedToId: data.assignedToId,
+      dueDate: data.dueDate,
+    },
+    timestamp: Date.now(),
+  })
+
+  return task
+}
+
+export async function updateLocalTask(
+  task: LocalCaregiverTask,
+  updates: Partial<Pick<LocalCaregiverTask, 'title' | 'description' | 'category' | 'priority' | 'status' | 'assignedToId' | 'dueDate'>>
+): Promise<void> {
+  await db.caregiverTasks.update(task.id, { ...updates, version: task.version + 1, syncedAt: new Date().toISOString() })
+  await addToOutbox({
+    workspaceId: task.workspaceId,
+    type: 'UPDATE_TASK',
+    entityType: 'CAREGIVER_TASK',
+    entityId: task.id,
+    data: updates,
+    timestamp: Date.now(),
+  })
+}
+
+export async function completeLocalTask(task: LocalCaregiverTask): Promise<void> {
+  const now = new Date().toISOString()
+  await db.caregiverTasks.update(task.id, { status: 'DONE', completedAt: now, version: task.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: task.workspaceId,
+    type: 'COMPLETE_TASK',
+    entityType: 'CAREGIVER_TASK',
+    entityId: task.id,
+    timestamp: Date.now(),
+  })
+}
+
+export async function deleteLocalTask(task: LocalCaregiverTask): Promise<void> {
+  const now = new Date().toISOString()
+  await db.caregiverTasks.update(task.id, { deletedAt: now, version: task.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: task.workspaceId,
+    type: 'DELETE_TASK',
+    entityType: 'CAREGIVER_TASK',
+    entityId: task.id,
+    timestamp: Date.now(),
+  })
+}
+
+// ============================================
+// LAB RESULT
+// ============================================
+
+export async function createLocalLabResult(
+  workspaceId: string,
+  data: Omit<LocalLabResult, 'id' | 'workspaceId' | 'version' | 'syncedAt' | 'deletedAt'>
+): Promise<LocalLabResult> {
+  const id = generateTempId()
+  const now = new Date().toISOString()
+  const lab: LocalLabResult = {
+    ...data,
+    id,
+    workspaceId,
+    deletedAt: null,
+    version: 1,
+    syncedAt: now,
+  }
+
+  await db.labResults.add(lab)
+  await addToOutbox({
+    workspaceId,
+    type: 'CREATE_LAB',
+    entityType: 'LAB_RESULT',
+    entityId: id,
+    data: {
+      testDate: data.testDate, panelName: data.panelName,
+      labName: data.labName, results: data.results, notes: data.notes,
+    },
+    timestamp: Date.now(),
+  })
+
+  return lab
+}
+
+export async function deleteLocalLabResult(lab: LocalLabResult): Promise<void> {
+  const now = new Date().toISOString()
+  await db.labResults.update(lab.id, { deletedAt: now, version: lab.version + 1, syncedAt: now })
+  await addToOutbox({
+    workspaceId: lab.workspaceId,
+    type: 'DELETE_LAB',
+    entityType: 'LAB_RESULT',
+    entityId: lab.id,
     timestamp: Date.now(),
   })
 }

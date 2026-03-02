@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus, AlertTriangle, ClipboardCheck, Heart } from 'lucide-react'
+import { Phone, MapPin, Clock, ChevronRight, Pill, Calendar, Plus, AlertTriangle, ClipboardCheck, Heart, Thermometer, Weight, Milestone } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db, logDose, undoDose } from '@/lib/sync'
@@ -61,6 +61,43 @@ export default function TodayPage() {
       db.doseLogs
         .where('workspaceId')
         .equals(currentWorkspace.id)
+        .toArray(),
+    [currentWorkspace.id]
+  )
+
+  // Latest temperature reading
+  const latestTemp = useLiveQuery(
+    () =>
+      db.temperatureLogs
+        .where('workspaceId')
+        .equals(currentWorkspace.id)
+        .and((t) => !t.deletedAt)
+        .reverse()
+        .sortBy('recordedAt')
+        .then((logs) => logs[0] ?? null),
+    [currentWorkspace.id]
+  )
+
+  // Latest weight reading
+  const latestWeight = useLiveQuery(
+    () =>
+      db.weightLogs
+        .where('workspaceId')
+        .equals(currentWorkspace.id)
+        .and((w) => !w.deletedAt)
+        .reverse()
+        .sortBy('recordedAt')
+        .then((logs) => logs[0] ?? null),
+    [currentWorkspace.id]
+  )
+
+  // Pending caregiver tasks (due today or overdue)
+  const pendingTasks = useLiveQuery(
+    () =>
+      db.caregiverTasks
+        .where('workspaceId')
+        .equals(currentWorkspace.id)
+        .and((t) => !t.deletedAt && t.status !== 'DONE')
         .toArray(),
     [currentWorkspace.id]
   )
@@ -397,8 +434,82 @@ export default function TodayPage() {
           )}
         </section>
 
+        {/* Health Snapshot Cards */}
+        <section className={`transition-all duration-700 delay-[600ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h2 className="font-display text-xl text-secondary-900 mb-4">Health Snapshot</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Temperature Card */}
+            <button
+              onClick={() => router.push('/temperature')}
+              className="bg-surface border border-border rounded-card p-4 text-left hover:shadow-elevated transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Thermometer className="w-5 h-5 text-red-500" />
+              </div>
+              <p className="text-sm text-secondary-500">Temperature</p>
+              {latestTemp ? (
+                <p className={`text-xl font-display mt-0.5 ${
+                  latestTemp.tempCelsius >= 38.0 ? 'text-red-600' : 'text-secondary-900'
+                }`}>
+                  {latestTemp.tempCelsius}°C
+                </p>
+              ) : (
+                <p className="text-sm text-secondary-400 mt-0.5">No readings</p>
+              )}
+            </button>
+
+            {/* Weight Card */}
+            <button
+              onClick={() => router.push('/weight')}
+              className="bg-surface border border-border rounded-card p-4 text-left hover:shadow-elevated transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Weight className="w-5 h-5 text-blue-500" />
+              </div>
+              <p className="text-sm text-secondary-500">Weight</p>
+              {latestWeight ? (
+                <p className="text-xl font-display text-secondary-900 mt-0.5">
+                  {latestWeight.weightKg} kg
+                </p>
+              ) : (
+                <p className="text-sm text-secondary-400 mt-0.5">No readings</p>
+              )}
+            </button>
+
+            {/* Tasks Card */}
+            <button
+              onClick={() => router.push('/tasks')}
+              className="bg-surface border border-border rounded-card p-4 text-left hover:shadow-elevated transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-accent-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <ClipboardCheck className="w-5 h-5 text-accent-500" />
+              </div>
+              <p className="text-sm text-secondary-500">Tasks</p>
+              {pendingTasks && pendingTasks.length > 0 ? (
+                <p className="text-xl font-display text-secondary-900 mt-0.5">
+                  {pendingTasks.length} pending
+                </p>
+              ) : (
+                <p className="text-sm text-secondary-400 mt-0.5">All done</p>
+              )}
+            </button>
+
+            {/* Timeline Card */}
+            <button
+              onClick={() => router.push('/timeline')}
+              className="bg-surface border border-border rounded-card p-4 text-left hover:shadow-elevated transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Milestone className="w-5 h-5 text-primary-500" />
+              </div>
+              <p className="text-sm text-secondary-500">Timeline</p>
+              <p className="text-sm text-primary-600 font-medium mt-0.5">View progress</p>
+            </button>
+          </div>
+        </section>
+
         {/* Quick Note */}
-        <section className={`transition-all duration-700 delay-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <section className={`transition-all duration-700 delay-[700ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <h2 className="font-display text-xl text-secondary-900 mb-4">Quick Note</h2>
           <div className="section-warm">
             <div className="flex gap-3">

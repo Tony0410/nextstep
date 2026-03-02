@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['**/*.test.ts'],
+    env: {
+      TZ: 'Australia/Perth',
+    },
   },
   resolve: {
     alias: {

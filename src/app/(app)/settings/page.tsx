@@ -18,6 +18,13 @@ import {
   Calendar,
   FileText,
   Bell,
+  Thermometer,
+  Weight,
+  TestTubes,
+  FolderOpen,
+  ClipboardList,
+  Milestone,
+  Pill,
 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 
@@ -275,6 +282,138 @@ export default function SettingsPage() {
                 <p className="text-sm text-secondary-500">
                   View all changes and actions
                 </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+          </Card>
+        </section>
+
+        {/* Health Tracking */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Health Tracking
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/temperature')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Thermometer className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Temperature Log</p>
+                <p className="text-sm text-secondary-500">Track fever and temperature</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+            <div className="border-t border-border">
+              <button
+                onClick={() => router.push('/weight')}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+              >
+                <Weight className="w-5 h-5 text-secondary-500" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-secondary-900">Weight Tracking</p>
+                  <p className="text-sm text-secondary-500">Monitor weight changes</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary-300" />
+              </button>
+            </div>
+            <div className="border-t border-border">
+              <button
+                onClick={() => router.push('/lab-results')}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+              >
+                <TestTubes className="w-5 h-5 text-secondary-500" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-secondary-900">Lab Results</p>
+                  <p className="text-sm text-secondary-500">Blood work and test results</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary-300" />
+              </button>
+            </div>
+          </Card>
+        </section>
+
+        {/* Care Team */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Care Team
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/contacts')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Phone className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Contact Directory</p>
+                <p className="text-sm text-secondary-500">Doctors, nurses, pharmacists</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+            <div className="border-t border-border">
+              <button
+                onClick={() => router.push('/tasks')}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+              >
+                <ClipboardList className="w-5 h-5 text-secondary-500" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-secondary-900">Caregiver Tasks</p>
+                  <p className="text-sm text-secondary-500">Family task coordination</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary-300" />
+              </button>
+            </div>
+          </Card>
+        </section>
+
+        {/* Treatment */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Treatment
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/timeline')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Milestone className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Treatment Timeline</p>
+                <p className="text-sm text-secondary-500">Milestones and progress</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-secondary-300" />
+            </button>
+            <div className="border-t border-border">
+              <button
+                onClick={() => router.push('/documents')}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+              >
+                <FolderOpen className="w-5 h-5 text-secondary-500" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-secondary-900">Medical Documents</p>
+                  <p className="text-sm text-secondary-500">Upload and store files</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary-300" />
+              </button>
+            </div>
+          </Card>
+        </section>
+
+        {/* Safety */}
+        <section>
+          <h2 className="text-sm font-semibold text-secondary-600 mb-3">
+            Safety
+          </h2>
+          <Card padding="none">
+            <button
+              onClick={() => router.push('/meds')}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors"
+            >
+              <Pill className="w-5 h-5 text-secondary-500" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-secondary-900">Drug Interactions</p>
+                <p className="text-sm text-secondary-500">Check medication safety</p>
               </div>
               <ChevronRight className="w-5 h-5 text-secondary-300" />
             </button>
