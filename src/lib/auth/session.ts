@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db/prisma'
 import { nanoid } from 'nanoid'
+import { shouldUseSecureCookies } from './cookies'
 
 const SESSION_COOKIE_NAME = 'nextstep_session'
 const SESSION_MAX_AGE_DAYS = parseInt(process.env.SESSION_MAX_AGE_DAYS || '30', 10)
@@ -89,32 +90,33 @@ export function setSessionCookie(token: string): void {
   // happens in the API route response
 }
 
-export function getSessionCookieConfig(token: string) {
+interface CookieRequestMetadata {
+  forwardedProto?: string | null
+  origin?: string | null
+  referer?: string | null
+}
+
+export function getSessionCookieConfig(token: string, metadata?: CookieRequestMetadata) {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_MAX_AGE_DAYS)
-
-  // Allow disabling secure cookies for internal/Tailscale networks
-  const requireHttps = process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production'
 
   return {
     name: SESSION_COOKIE_NAME,
     value: token,
     httpOnly: true,
-    secure: requireHttps,
+    secure: shouldUseSecureCookies(metadata),
     sameSite: 'lax' as const,
     expires: expiresAt,
     path: '/',
   }
 }
 
-export function getSessionCookieClearConfig() {
-  const requireHttps = process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production'
-
+export function getSessionCookieClearConfig(metadata?: CookieRequestMetadata) {
   return {
     name: SESSION_COOKIE_NAME,
     value: '',
     httpOnly: true,
-    secure: requireHttps,
+    secure: shouldUseSecureCookies(metadata),
     sameSite: 'lax' as const,
     expires: new Date(0),
     path: '/',

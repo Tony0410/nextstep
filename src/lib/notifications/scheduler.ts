@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { sendPushNotification } from './push'
+import { isDue } from './due'
 
 interface MedicationSchedule {
   medicationId: string
@@ -32,18 +33,6 @@ function isQuietHours(
   }
 
   return currentMinutes >= startMinutes && currentMinutes < endMinutes
-}
-
-/**
- * Check if a medication dose is due at the current time
- */
-function isDue(scheduledTime: string, now: Date, toleranceMinutes = 5): boolean {
-  const [hours, minutes] = scheduledTime.split(':').map(Number)
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const schedMinutes = hours * 60 + minutes
-
-  // Due if within tolerance window
-  return Math.abs(nowMinutes - schedMinutes) <= toleranceMinutes
 }
 
 /**

@@ -37,6 +37,7 @@ function RegisterForm() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name, email, password }),
       })
 
@@ -45,6 +46,15 @@ function RegisterForm() {
       if (!response.ok) {
         setError(data.error || 'Registration failed')
         return
+      }
+
+      const sessionResponse = await fetch('/api/auth/me', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!sessionResponse.ok) {
+        throw new Error('Your account was created, but the session is not available yet. Please sign in again.')
       }
 
       showToast('Account created! Let\'s get started.', 'success')

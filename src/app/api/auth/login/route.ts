@@ -78,7 +78,11 @@ async function handler(req: NextRequest) {
     // Create session
     const userAgent = req.headers.get('user-agent') || undefined
     const token = await createSession(user.id, userAgent, ipAddress)
-    const cookieConfig = getSessionCookieConfig(token)
+    const cookieConfig = getSessionCookieConfig(token, {
+      forwardedProto: req.headers.get('x-forwarded-proto'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer'),
+    })
 
     const response = NextResponse.json({
       user: {

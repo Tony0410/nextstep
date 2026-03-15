@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSession, deleteSession, getSessionCookieClearConfig } from '@/lib/auth'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await getSession()
 
@@ -9,7 +9,11 @@ export async function POST() {
       await deleteSession(session.sessionId)
     }
 
-    const cookieConfig = getSessionCookieClearConfig()
+    const cookieConfig = getSessionCookieClearConfig({
+      forwardedProto: req.headers.get('x-forwarded-proto'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer'),
+    })
     const response = NextResponse.json({ message: 'Logged out successfully' })
     response.cookies.set(cookieConfig)
 
@@ -17,7 +21,11 @@ export async function POST() {
   } catch (error) {
     console.error('Logout error:', error)
     // Still clear the cookie even on error
-    const cookieConfig = getSessionCookieClearConfig()
+    const cookieConfig = getSessionCookieClearConfig({
+      forwardedProto: req.headers.get('x-forwarded-proto'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer'),
+    })
     const response = NextResponse.json({ message: 'Logged out' })
     response.cookies.set(cookieConfig)
     return response

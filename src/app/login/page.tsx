@@ -24,6 +24,7 @@ function LoginForm() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
@@ -40,6 +41,15 @@ function LoginForm() {
         router.push('/change-password')
         router.refresh()
         return
+      }
+
+      const sessionResponse = await fetch('/api/auth/me', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!sessionResponse.ok) {
+        throw new Error('Your session was created but is not available yet. Please try again.')
       }
 
       showToast('Welcome back!', 'success')
